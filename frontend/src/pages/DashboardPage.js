@@ -100,7 +100,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">En Mantenimiento</p>
-                <p className="text-3xl font-bold mt-1 text-amber-600">{stats?.active_maintenance || 0}</p>
+                <p className="text-3xl font-bold mt-1 text-amber-600">{stats?.pending_maintenance || 0}</p>
               </div>
               <div className="kpi-icon bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
                 <Wrench className="w-6 h-6" />
