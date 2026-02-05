@@ -13,7 +13,7 @@ import {
 import { 
   LayoutDashboard, Monitor, Building2, Users, UserCheck, Wrench, 
   XCircle, Server, FileText, Receipt, Settings, LogOut, Menu, X,
-  Sun, Moon, Bell, ChevronDown, Search
+  Sun, Moon, Bell, ChevronDown, Search, SlidersHorizontal
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -28,6 +28,7 @@ const navItems = [
   { icon: FileText, label: 'Cotizaciones', path: '/quotations' },
   { icon: Receipt, label: 'Facturas', path: '/invoices' },
   { icon: Settings, label: 'Usuarios', path: '/users' },
+  { icon: SlidersHorizontal, label: 'Campos Personalizados', path: '/custom-fields' },
 ];
 
 export const MainLayout = () => {
