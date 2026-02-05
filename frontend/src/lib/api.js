@@ -118,7 +118,10 @@ export const quotationsAPI = {
   getById: (id) => api.get(`/quotations/${id}`),
   create: (data) => api.post('/quotations', data),
   updateStatus: (id, status) => api.put(`/quotations/${id}/status`, null, { params: { status } }),
+  approve: (id) => api.put(`/quotations/${id}/status`, null, { params: { status: 'Aprobada' } }),
+  reject: (id) => api.put(`/quotations/${id}/status`, null, { params: { status: 'Rechazada' } }),
   downloadPdf: (id) => api.get(`/quotations/${id}/pdf`, { responseType: 'blob' }),
+  getPdf: (id) => api.get(`/quotations/${id}/pdf`, { responseType: 'blob' }),
 };
 
 export const invoicesAPI = {
@@ -126,7 +129,9 @@ export const invoicesAPI = {
   getById: (id) => api.get(`/invoices/${id}`),
   create: (data) => api.post('/invoices', data),
   updateStatus: (id, status) => api.put(`/invoices/${id}/status`, null, { params: { status } }),
+  markPaid: (id) => api.put(`/invoices/${id}/status`, null, { params: { status: 'Pagada' } }),
   downloadPdf: (id) => api.get(`/invoices/${id}/pdf`, { responseType: 'blob' }),
+  getPdf: (id) => api.get(`/invoices/${id}/pdf`, { responseType: 'blob' }),
 };
 
 export const reportsAPI = {
