@@ -249,6 +249,20 @@ export default function MaintenancePage() {
                 </Card>
               )}
 
+              {/* Custom Fields */}
+              <CustomFieldsRenderer
+                entityType="maintenance"
+                values={customFieldValues}
+                onChange={setCustomFieldValues}
+              />
+              <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <SlidersHorizontal className="w-4 h-4" />
+                  <span>Configura campos adicionales en</span>
+                  <a href="/custom-fields" className="text-primary hover:underline">Campos Personalizados</a>
+                </div>
+              </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={saving} data-testid="save-maintenance-btn">{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Crear</Button>
