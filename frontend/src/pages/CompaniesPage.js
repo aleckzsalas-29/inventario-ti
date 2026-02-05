@@ -444,6 +444,14 @@ export default function CompaniesPage() {
                             placeholder="+1 234 567 890"
                           />
                         </div>
+
+                        {/* Custom Fields for Branch */}
+                        <CustomFieldsRenderer
+                          entityType="branch"
+                          values={branchCustomFields}
+                          onChange={setBranchCustomFields}
+                        />
+
                         <DialogFooter>
                           <Button type="button" variant="outline" onClick={() => setBranchDialogOpen(false)}>
                             Cancelar
