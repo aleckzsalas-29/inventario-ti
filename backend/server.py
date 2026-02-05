@@ -1767,7 +1767,7 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
 # ==================== PDF GENERATION ENDPOINTS ====================
 
 @api_router.get("/reports/equipment/pdf")
-async def generate_equipment_report_pdf(company_id: Optional[str] = None, status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+async def generate_equipment_report_pdf(company_id: Optional[str] = None, status: Optional[str] = None, include_custom_fields: bool = False, current_user: dict = Depends(get_current_user)):
     query = {}
     if company_id:
         query["company_id"] = company_id
@@ -1776,6 +1776,11 @@ async def generate_equipment_report_pdf(company_id: Optional[str] = None, status
     if status:
         query["status"] = status
     equipment_list = await db.equipment.find(query, {"_id": 0}).to_list(1000)
+    
+    # Get custom fields for equipment
+    custom_fields = []
+    if include_custom_fields:
+        custom_fields = await db.custom_fields.find({"entity_type": "equipment", "is_active": {"$ne": False}}, {"_id": 0}).to_list(50)
     
     pdf = FPDF()
     pdf.add_page()
@@ -1801,6 +1806,17 @@ async def generate_equipment_report_pdf(company_id: Optional[str] = None, status
         pdf.cell(40, 7, eq.get("serial_number", "")[:20], 1)
         pdf.cell(25, 7, eq.get("status", ""), 1)
         pdf.ln()
+        
+        # Add custom fields for this equipment
+        if custom_fields and eq.get("custom_fields"):
+            cf_values = eq.get("custom_fields", {})
+            for cf in custom_fields:
+                value = cf_values.get(cf.get("name"), "")
+                if value:
+                    pdf.set_font("Helvetica", "I", 7)
+                    pdf.cell(185, 5, f"  {cf.get('name')}: {str(value)[:80]}", 0, ln=True)
+            pdf.set_font("Helvetica", "", 8)
+    
     pdf_bytes = pdf.output()
     return Response(content=bytes(pdf_bytes), media_type="application/pdf",
                     headers={"Content-Disposition": "attachment; filename=reporte_equipos.pdf"})
