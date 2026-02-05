@@ -5,18 +5,71 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from './ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Eye, EyeOff, Settings } from 'lucide-react';
+import { Eye, EyeOff, Settings, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
+
+// Validation helper functions
+const validateField = (value, field) => {
+  const validation = field.validation;
+  if (!validation) return null;
+  
+  const strValue = String(value || '');
+  
+  // Text validations
+  if (field.field_type === 'text' || field.field_type === 'password') {
+    if (validation.min_length && strValue.length < validation.min_length) {
+      return `Mínimo ${validation.min_length} caracteres`;
+    }
+    if (validation.max_length && strValue.length > validation.max_length) {
+      return `Máximo ${validation.max_length} caracteres`;
+    }
+    if (validation.regex_pattern && strValue) {
+      try {
+        const regex = new RegExp(validation.regex_pattern);
+        if (!regex.test(strValue)) {
+          return validation.regex_message || 'Formato inválido';
+        }
+      } catch (e) {
+        console.error('Invalid regex:', e);
+      }
+    }
+  }
+  
+  // Number validations
+  if (field.field_type === 'number' && value !== '' && value !== null) {
+    const numValue = parseFloat(value);
+    if (validation.min_value !== null && validation.min_value !== undefined && numValue < validation.min_value) {
+      return `Valor mínimo: ${validation.min_value}`;
+    }
+    if (validation.max_value !== null && validation.max_value !== undefined && numValue > validation.max_value) {
+      return `Valor máximo: ${validation.max_value}`;
+    }
+  }
+  
+  // Date validations
+  if (field.field_type === 'date' && value) {
+    if (validation.min_date && value < validation.min_date) {
+      return `Fecha mínima: ${validation.min_date}`;
+    }
+    if (validation.max_date && value > validation.max_date) {
+      return `Fecha máxima: ${validation.max_date}`;
+    }
+  }
+  
+  return null;
+};
 
 export default function CustomFieldsRenderer({ 
   entityType, 
   values = {}, 
   onChange,
-  showTitle = true 
+  showTitle = true,
+  onValidationChange
 }) {
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPasswords, setShowPasswords] = useState({});
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchFields();
@@ -33,7 +86,24 @@ export default function CustomFieldsRenderer({
     }
   };
 
-  const handleChange = (fieldName, value) => {
+  const handleChange = (fieldName, value, field) => {
+    // Validate the field
+    const error = validateField(value, field);
+    const newErrors = { ...errors };
+    
+    if (error) {
+      newErrors[fieldName] = error;
+    } else {
+      delete newErrors[fieldName];
+    }
+    
+    setErrors(newErrors);
+    
+    // Notify parent about validation state
+    if (onValidationChange) {
+      onValidationChange(Object.keys(newErrors).length === 0);
+    }
+    
     onChange({
       ...values,
       [fieldName]: value
@@ -61,6 +131,8 @@ export default function CustomFieldsRenderer({
   const renderField = (field) => {
     const value = values[field.name] ?? '';
     const fieldKey = `custom-${field.name}`;
+    const error = errors[field.name];
+    const hasValidation = field.validation && Object.keys(field.validation).some(k => field.validation[k] !== null);
 
     switch (field.field_type) {
       case 'text':
@@ -72,10 +144,20 @@ export default function CustomFieldsRenderer({
             </Label>
             <Input
               value={value}
-              onChange={(e) => handleChange(field.name, e.target.value)}
-              placeholder={`Ingrese ${field.name.toLowerCase()}`}
+              onChange={(e) => handleChange(field.name, e.target.value, field)}
+              placeholder={field.placeholder || `Ingrese ${field.name.toLowerCase()}`}
               required={field.required}
+              className={error ? 'border-red-500' : ''}
+              maxLength={field.validation?.max_length || undefined}
             />
+            {field.help_text && !error && (
+              <p className="text-xs text-muted-foreground">{field.help_text}</p>
+            )}
+            {error && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {error}
+              </p>
+            )}
           </div>
         );
 
@@ -89,10 +171,21 @@ export default function CustomFieldsRenderer({
             <Input
               type="number"
               value={value}
-              onChange={(e) => handleChange(field.name, e.target.value)}
-              placeholder="0"
+              onChange={(e) => handleChange(field.name, e.target.value, field)}
+              placeholder={field.placeholder || "0"}
               required={field.required}
+              className={error ? 'border-red-500' : ''}
+              min={field.validation?.min_value ?? undefined}
+              max={field.validation?.max_value ?? undefined}
             />
+            {field.help_text && !error && (
+              <p className="text-xs text-muted-foreground">{field.help_text}</p>
+            )}
+            {error && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {error}
+              </p>
+            )}
           </div>
         );
 
@@ -106,9 +199,20 @@ export default function CustomFieldsRenderer({
             <Input
               type="date"
               value={value}
-              onChange={(e) => handleChange(field.name, e.target.value)}
+              onChange={(e) => handleChange(field.name, e.target.value, field)}
               required={field.required}
+              className={error ? 'border-red-500' : ''}
+              min={field.validation?.min_date || undefined}
+              max={field.validation?.max_date || undefined}
             />
+            {field.help_text && !error && (
+              <p className="text-xs text-muted-foreground">{field.help_text}</p>
+            )}
+            {error && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {error}
+              </p>
+            )}
           </div>
         );
 
@@ -121,9 +225,9 @@ export default function CustomFieldsRenderer({
             </Label>
             <Select 
               value={value || "placeholder"} 
-              onValueChange={(v) => handleChange(field.name, v === "placeholder" ? "" : v)}
+              onValueChange={(v) => handleChange(field.name, v === "placeholder" ? "" : v, field)}
             >
-              <SelectTrigger>
+              <SelectTrigger className={error ? 'border-red-500' : ''}>
                 <SelectValue placeholder="Seleccionar..." />
               </SelectTrigger>
               <SelectContent>
@@ -133,20 +237,28 @@ export default function CustomFieldsRenderer({
                 ))}
               </SelectContent>
             </Select>
+            {field.help_text && (
+              <p className="text-xs text-muted-foreground">{field.help_text}</p>
+            )}
           </div>
         );
 
       case 'boolean':
         return (
-          <div key={fieldKey} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-            <Label className="cursor-pointer">
-              {field.name}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </Label>
-            <Switch
-              checked={value === true || value === 'true'}
-              onCheckedChange={(checked) => handleChange(field.name, checked)}
-            />
+          <div key={fieldKey} className="space-y-2">
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <Label className="cursor-pointer">
+                {field.name}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </Label>
+              <Switch
+                checked={value === true || value === 'true'}
+                onCheckedChange={(checked) => handleChange(field.name, checked, field)}
+              />
+            </div>
+            {field.help_text && (
+              <p className="text-xs text-muted-foreground">{field.help_text}</p>
+            )}
           </div>
         );
 
@@ -161,9 +273,11 @@ export default function CustomFieldsRenderer({
               <Input
                 type={showPasswords[field.name] ? "text" : "password"}
                 value={value}
-                onChange={(e) => handleChange(field.name, e.target.value)}
-                placeholder="••••••••"
+                onChange={(e) => handleChange(field.name, e.target.value, field)}
+                placeholder={field.placeholder || "••••••••"}
                 required={field.required}
+                className={error ? 'border-red-500 pr-10' : 'pr-10'}
+                maxLength={field.validation?.max_length || undefined}
               />
               <Button
                 type="button"
@@ -175,6 +289,14 @@ export default function CustomFieldsRenderer({
                 {showPasswords[field.name] ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               </Button>
             </div>
+            {field.help_text && !error && (
+              <p className="text-xs text-muted-foreground">{field.help_text}</p>
+            )}
+            {error && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {error}
+              </p>
+            )}
           </div>
         );
 
