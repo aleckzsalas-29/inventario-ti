@@ -7,60 +7,9 @@ import { Card, CardContent } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
-import { Plus, FileText, Download, Loader2, Search, MoreVertical, Check, X as XIcon } from 'lucide-react';
+import { Plus, FileText, Download, Loader2, Search, MoreVertical, Check, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { toast } from 'sonner';
-
-function QuotationItemRow({ item, index, onUpdate, onRemove, canRemove }) {
-  return (
-    <div className="grid grid-cols-12 gap-2 items-end p-3 rounded-lg bg-muted/50">
-      <div className="col-span-5 space-y-1">
-        <Label className="text-xs">Descripción</Label>
-        <Input
-          value={item.description}
-          onChange={(e) => onUpdate(index, 'description', e.target.value)}
-          placeholder="Servicio o producto"
-        />
-      </div>
-      <div className="col-span-2 space-y-1">
-        <Label className="text-xs">Cantidad</Label>
-        <Input
-          type="number"
-          min="1"
-          value={item.quantity}
-          onChange={(e) => onUpdate(index, 'quantity', e.target.value)}
-        />
-      </div>
-      <div className="col-span-2 space-y-1">
-        <Label className="text-xs">Precio Unit.</Label>
-        <Input
-          type="number"
-          step="0.01"
-          value={item.unit_price}
-          onChange={(e) => onUpdate(index, 'unit_price', e.target.value)}
-          placeholder="0.00"
-        />
-      </div>
-      <div className="col-span-2 space-y-1">
-        <Label className="text-xs">Desc. %</Label>
-        <Input
-          type="number"
-          min="0"
-          max="100"
-          value={item.discount}
-          onChange={(e) => onUpdate(index, 'discount', e.target.value)}
-        />
-      </div>
-      <div className="col-span-1">
-        {canRemove && (
-          <Button type="button" variant="ghost" size="icon" onClick={() => onRemove(index)}>
-            <XIcon className="w-4 h-4 text-destructive" />
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function QuotationsPage() {
   const [quotations, setQuotations] = useState([]);
@@ -70,26 +19,27 @@ export default function QuotationsPage() {
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [filterCompany, setFilterCompany] = useState('');
-  const [form, setForm] = useState({
-    company_id: '',
-    client_name: '',
-    client_email: '',
-    client_address: '',
-    items: [{ description: '', quantity: 1, unit_price: '', discount: 0 }],
-    tax_rate: 0,
-    notes: '',
-    valid_days: 30
-  });
+  const [companyId, setCompanyId] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientAddress, setClientAddress] = useState('');
+  const [taxRate, setTaxRate] = useState('0');
+  const [notes, setNotes] = useState('');
+  const [validDays, setValidDays] = useState('30');
+  const [itemDesc, setItemDesc] = useState('');
+  const [itemQty, setItemQty] = useState('1');
+  const [itemPrice, setItemPrice] = useState('');
+  const [itemDiscount, setItemDiscount] = useState('0');
+  const [itemsList, setItemsList] = useState([]);
 
   useEffect(() => {
     fetchData();
-  }, [filterStatus, filterCompany]);
+  }, [filterStatus]);
 
   const fetchData = async () => {
     try {
       const [quotRes, compRes] = await Promise.all([
-        quotationsAPI.getAll({ status: filterStatus || undefined, company_id: filterCompany || undefined }),
+        quotationsAPI.getAll({ status: filterStatus || undefined }),
         companiesAPI.getAll()
       ]);
       setQuotations(quotRes.data);
@@ -101,36 +51,55 @@ export default function QuotationsPage() {
     }
   };
 
+  const addItemToList = () => {
+    if (!itemDesc || !itemPrice) {
+      toast.error('Complete descripción y precio');
+      return;
+    }
+    setItemsList([...itemsList, {
+      description: itemDesc,
+      quantity: parseInt(itemQty) || 1,
+      unit_price: parseFloat(itemPrice) || 0,
+      discount: parseFloat(itemDiscount) || 0
+    }]);
+    setItemDesc('');
+    setItemQty('1');
+    setItemPrice('');
+    setItemDiscount('0');
+  };
+
+  const removeItemFromList = (index) => {
+    setItemsList(itemsList.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.company_id || !form.client_name) {
+    if (!companyId || !clientName) {
       toast.error('Complete los campos obligatorios');
       return;
     }
-    const validItems = form.items.filter(item => item.description && item.unit_price);
-    if (validItems.length === 0) {
-      toast.error('Agregue al menos un item válido');
+    if (itemsList.length === 0) {
+      toast.error('Agregue al menos un item');
       return;
     }
     setSaving(true);
     try {
       await quotationsAPI.create({
-        ...form,
-        items: validItems.map(item => ({
-          ...item,
-          quantity: parseInt(item.quantity) || 1,
-          unit_price: parseFloat(item.unit_price) || 0,
-          discount: parseFloat(item.discount) || 0
-        })),
-        tax_rate: parseFloat(form.tax_rate) || 0,
-        valid_days: parseInt(form.valid_days) || 30
+        company_id: companyId,
+        client_name: clientName,
+        client_email: clientEmail || null,
+        client_address: clientAddress || null,
+        items: itemsList,
+        tax_rate: parseFloat(taxRate) || 0,
+        notes: notes || null,
+        valid_days: parseInt(validDays) || 30
       });
       toast.success('Cotización creada');
       setDialogOpen(false);
       resetForm();
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Error al crear cotización');
+      toast.error(error.response?.data?.detail || 'Error al crear');
     } finally {
       setSaving(false);
     }
@@ -142,7 +111,7 @@ export default function QuotationsPage() {
       toast.success('Estado actualizado');
       fetchData();
     } catch (error) {
-      toast.error('Error al actualizar estado');
+      toast.error('Error');
     }
   };
 
@@ -156,101 +125,58 @@ export default function QuotationsPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success('PDF descargado');
     } catch (error) {
-      toast.error('Error al descargar PDF');
+      toast.error('Error');
     }
   };
 
   const resetForm = () => {
-    setForm({
-      company_id: '',
-      client_name: '',
-      client_email: '',
-      client_address: '',
-      items: [{ description: '', quantity: 1, unit_price: '', discount: 0 }],
-      tax_rate: 0,
-      notes: '',
-      valid_days: 30
-    });
+    setCompanyId('');
+    setClientName('');
+    setClientEmail('');
+    setClientAddress('');
+    setTaxRate('0');
+    setNotes('');
+    setValidDays('30');
+    setItemDesc('');
+    setItemQty('1');
+    setItemPrice('');
+    setItemDiscount('0');
+    setItemsList([]);
   };
 
-  const addItem = () => {
-    setForm({ ...form, items: [...form.items, { description: '', quantity: 1, unit_price: '', discount: 0 }] });
-  };
-
-  const removeItem = (index) => {
-    if (form.items.length > 1) {
-      setForm({ ...form, items: form.items.filter((_, i) => i !== index) });
-    }
-  };
-
-  const updateItem = (index, field, value) => {
-    const newItems = [...form.items];
-    newItems[index][field] = value;
-    setForm({ ...form, items: newItems });
-  };
-
-  const calculateSubtotal = () => {
-    return form.items.reduce((sum, item) => {
-      const qty = parseInt(item.quantity) || 0;
-      const price = parseFloat(item.unit_price) || 0;
-      const disc = parseFloat(item.discount) || 0;
-      return sum + (qty * price * (1 - disc / 100));
-    }, 0);
-  };
-
-  const getStatusBadge = (status) => {
-    const styles = {
-      'Pendiente': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-      'Aceptada': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
-      'Rechazada': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-      'Convertida': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-    };
-    return styles[status] || '';
-  };
+  const subtotal = itemsList.reduce((sum, item) => sum + (item.quantity * item.unit_price * (1 - item.discount / 100)), 0);
+  const taxAmount = subtotal * (parseFloat(taxRate) || 0) / 100;
+  const total = subtotal + taxAmount;
 
   const filteredQuotations = quotations.filter(q => {
     if (!searchQuery) return true;
-    const search = searchQuery.toLowerCase();
-    return q.quotation_number?.toLowerCase().includes(search) || q.client_name?.toLowerCase().includes(search);
+    const s = searchQuery.toLowerCase();
+    return q.quotation_number?.toLowerCase().includes(s) || q.client_name?.toLowerCase().includes(s);
   });
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
-
-  const subtotal = calculateSubtotal();
-  const taxAmount = subtotal * (parseFloat(form.tax_rate) || 0) / 100;
-  const total = subtotal + taxAmount;
 
   return (
     <div className="space-y-6" data-testid="quotations-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Cotizaciones</h1>
-          <p className="text-muted-foreground">Crea y gestiona cotizaciones para clientes</p>
+          <p className="text-muted-foreground">Crea y gestiona cotizaciones</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button data-testid="new-quotation-btn">
-              <Plus className="w-4 h-4 mr-2" />
-              Nueva Cotización
-            </Button>
+            <Button data-testid="new-quotation-btn"><Plus className="w-4 h-4 mr-2" />Nueva Cotización</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Nueva Cotización</DialogTitle>
-            </DialogHeader>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Nueva Cotización</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Empresa Emisora *</Label>
-                  <Select value={form.company_id} onValueChange={(value) => setForm({...form, company_id: value})}>
+                  <Label>Empresa *</Label>
+                  <Select value={companyId} onValueChange={setCompanyId}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                     <SelectContent>
                       {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -258,62 +184,80 @@ export default function QuotationsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Días de Validez</Label>
-                  <Input type="number" value={form.valid_days} onChange={(e) => setForm({...form, valid_days: e.target.value})} />
+                  <Label>Días Validez</Label>
+                  <Input type="number" value={validDays} onChange={(e) => setValidDays(e.target.value)} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Nombre del Cliente *</Label>
-                  <Input value={form.client_name} onChange={(e) => setForm({...form, client_name: e.target.value})} />
+                  <Label>Cliente *</Label>
+                  <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Nombre cliente" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email del Cliente</Label>
-                  <Input type="email" value={form.client_email} onChange={(e) => setForm({...form, client_email: e.target.value})} />
+                  <Label>Email</Label>
+                  <Input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Dirección</Label>
-                <Input value={form.client_address} onChange={(e) => setForm({...form, client_address: e.target.value})} />
+                <Input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} />
               </div>
+
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Items *</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                    <Plus className="w-4 h-4 mr-1" />Agregar
-                  </Button>
+                <Label>Agregar Item</Label>
+                <div className="grid grid-cols-12 gap-2 p-3 rounded-lg bg-muted/50">
+                  <div className="col-span-4">
+                    <Input value={itemDesc} onChange={(e) => setItemDesc(e.target.value)} placeholder="Descripción" />
+                  </div>
+                  <div className="col-span-2">
+                    <Input type="number" min="1" value={itemQty} onChange={(e) => setItemQty(e.target.value)} placeholder="Cant" />
+                  </div>
+                  <div className="col-span-2">
+                    <Input type="number" step="0.01" value={itemPrice} onChange={(e) => setItemPrice(e.target.value)} placeholder="Precio" />
+                  </div>
+                  <div className="col-span-2">
+                    <Input type="number" min="0" max="100" value={itemDiscount} onChange={(e) => setItemDiscount(e.target.value)} placeholder="Desc%" />
+                  </div>
+                  <div className="col-span-2">
+                    <Button type="button" onClick={addItemToList} variant="secondary" className="w-full">Agregar</Button>
+                  </div>
                 </div>
-                {form.items.map((item, index) => (
-                  <QuotationItemRow 
-                    key={index} 
-                    item={item} 
-                    index={index} 
-                    onUpdate={updateItem} 
-                    onRemove={removeItem}
-                    canRemove={form.items.length > 1}
-                  />
-                ))}
+
+                {itemsList.length > 0 && (
+                  <div className="space-y-2">
+                    {itemsList.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded border">
+                        <span className="text-sm">{item.description} x{item.quantity} @ ${item.unit_price}</span>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => removeItemFromList(idx)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Impuesto (%)</Label>
-                  <Input type="number" step="0.01" value={form.tax_rate} onChange={(e) => setForm({...form, tax_rate: e.target.value})} />
+                  <Label>Impuesto %</Label>
+                  <Input type="number" step="0.01" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
                 </div>
-                <div className="p-4 rounded-lg bg-primary/10 space-y-1">
-                  <p className="text-sm text-muted-foreground">Subtotal: ${subtotal.toFixed(2)}</p>
-                  <p className="text-sm text-muted-foreground">Impuesto: ${taxAmount.toFixed(2)}</p>
+                <div className="p-4 rounded-lg bg-primary/10">
+                  <p className="text-sm">Subtotal: ${subtotal.toFixed(2)}</p>
+                  <p className="text-sm">Impuesto: ${taxAmount.toFixed(2)}</p>
                   <p className="font-bold">Total: ${total.toFixed(2)}</p>
                 </div>
               </div>
+
               <div className="space-y-2">
                 <Label>Notas</Label>
-                <Textarea value={form.notes} onChange={(e) => setForm({...form, notes: e.target.value})} rows={2} />
+                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
               </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={saving}>
-                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Crear
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Crear
                 </Button>
               </DialogFooter>
             </form>
@@ -365,7 +309,11 @@ export default function QuotationsPage() {
                       <td className="font-medium">{quot.client_name}</td>
                       <td>${quot.total?.toFixed(2)}</td>
                       <td>{new Date(quot.valid_until).toLocaleDateString('es')}</td>
-                      <td><span className={`status-badge ${getStatusBadge(quot.status)}`}>{quot.status}</span></td>
+                      <td>
+                        <span className={`status-badge ${quot.status === 'Pendiente' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' : quot.status === 'Aceptada' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
+                          {quot.status}
+                        </span>
+                      </td>
                       <td className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -376,14 +324,9 @@ export default function QuotationsPage() {
                               <Download className="w-4 h-4 mr-2" />PDF
                             </DropdownMenuItem>
                             {quot.status === 'Pendiente' && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(quot.id, 'Aceptada')}>
-                                  <Check className="w-4 h-4 mr-2" />Aceptar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(quot.id, 'Rechazada')}>
-                                  <XIcon className="w-4 h-4 mr-2" />Rechazar
-                                </DropdownMenuItem>
-                              </>
+                              <DropdownMenuItem onClick={() => handleUpdateStatus(quot.id, 'Aceptada')}>
+                                <Check className="w-4 h-4 mr-2" />Aceptar
+                              </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
