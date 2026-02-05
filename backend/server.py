@@ -1860,6 +1860,9 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
     if not eq and not logs:
         raise HTTPException(status_code=404, detail="Equipo no encontrado")
     
+    # Get custom fields for maintenance
+    custom_fields = await db.custom_fields.find({"entity_type": "maintenance", "is_active": {"$ne": False}}, {"_id": 0}).to_list(50)
+    
     # Use equipment data or defaults from logs
     inv_code = str(eq.get('inventory_code', 'N/A') if eq else logs[0].get('equipment_code', 'N/A'))[:30]
     eq_type = str(eq.get('equipment_type', '') if eq else logs[0].get('equipment_type', ''))[:20]
@@ -1917,6 +1920,16 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
             parts = log.get("parts_used")
             if parts:
                 pdf.cell(0, 6, f"Materiales: {str(parts)[:100]}", border="LR", ln=True)
+            
+            # Add custom fields for this maintenance log
+            if custom_fields and log.get("custom_fields"):
+                cf_values = log.get("custom_fields", {})
+                for cf in custom_fields:
+                    value = cf_values.get(cf.get("name"), "")
+                    if value:
+                        pdf.set_font("Helvetica", "I", 8)
+                        pdf.cell(0, 5, f"  {cf.get('name')}: {str(value)[:80]}", border="LR", ln=True)
+                pdf.set_font("Helvetica", "", 9)
             
             if log.get("completed_at"):
                 completed = str(log.get("completed_at", ""))[:19].replace("T", " ")
