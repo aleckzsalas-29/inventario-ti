@@ -190,6 +190,7 @@ export default function EquipmentPage() {
       cloud_user: eq.cloud_user || '',
       cloud_password: eq.cloud_password || ''
     });
+    setCustomFieldValues(eq.custom_fields || {});
     fetchBranches(eq.company_id);
     setDialogOpen(true);
   };
@@ -208,6 +209,7 @@ export default function EquipmentPage() {
   const resetForm = () => {
     setEditingEquipment(null);
     setForm(initialFormState);
+    setCustomFieldValues({});
     setBranches([]);
     setShowPasswords({ windows: false, email: false, cloud: false });
   };
