@@ -24,47 +24,46 @@ Migración de sistema PHP de inventario TI a stack moderno con mejoras de interf
 - [x] Asignación de equipos por empresa/empleado
 - [x] Reportes PDF
 - [x] Modo claro/oscuro
+- [x] **Campos Personalizados Dinámicos** (05/02/2026) ✨ NUEVO
 
 ### Pendientes
-- [ ] Integración con PAC para timbrado CFDI
-- [ ] Campos personalizados dinámicos (UI)
+- [ ] Integración con PAC para timbrado CFDI (preparado, pendiente proveedor)
 - [ ] Notificaciones email (requiere API key Resend)
 - [ ] Alertas de renovación de servicios externos
 
-## Implementado (05/02/2026)
+## Implementado (05/02/2026) - Campos Personalizados
 
-### Equipos - Nuevo Formulario con Tabs
-- **General**: Empresa, código inventario, tipo, marca, modelo, serie, estado
-- **Hardware**: 
-  - Procesador (marca, modelo, velocidad)
-  - RAM (capacidad, tipo DDR)
-  - Almacenamiento (tipo SSD/HDD/NVMe, capacidad)
-  - Red (IP, MAC)
-- **Software**:
-  - Sistema operativo (nombre, versión, licencia)
-  - Antivirus (nombre, licencia, vencimiento)
-- **Credenciales**:
-  - Windows (usuario, contraseña)
-  - Correo (cuenta, contraseña)
-  - Nube (usuario, contraseña)
+### Funcionalidad de Campos Personalizados
+Permite crear campos adicionales dinámicos para cualquier sección del sistema sin modificar código.
 
-### Mantenimientos - Campos por Tipo
-- **Preventivo**: Próximo mantenimiento, frecuencia
-- **Correctivo/Reparación**: Diagnóstico, solución, tiempo de reparación, piezas
-- Flujo: Crear → Iniciar → Finalizar
-- Historial por equipo con descarga PDF
+**Secciones soportadas:**
+- Equipos (equipment)
+- Empresas (company)
+- Sucursales (branch)
+- Empleados (employee)
+- Servicios Externos (service)
+- Mantenimientos (maintenance)
+- Cotizaciones (quotation)
+- Facturas (invoice)
 
-### Facturación CFDI México
-- **Receptor**: RFC, régimen fiscal, código postal
-- **CFDI**: Uso CFDI, método pago (PUE/PPD), forma pago, condiciones
-- **Moneda**: MXN, USD, EUR con tipo de cambio
-- Catálogos SAT integrados
-- ⚠️ Sin timbrado PAC (pendiente integración)
+**Tipos de campo disponibles:**
+- Texto
+- Número
+- Fecha
+- Lista de opciones (select)
+- Sí/No (boolean)
+- Contraseña (oculta)
 
-### Cotizaciones
-- RFC y régimen fiscal del cliente
-- Uso CFDI para conversión a factura
-- Conceptos con claves SAT opcionales
+**Componentes creados:**
+- `/app/frontend/src/pages/CustomFieldsPage.js` - Página de administración
+- `/app/frontend/src/components/CustomFieldsRenderer.js` - Componente reutilizable
+
+**Integración en formularios:**
+- EquipmentPage.js - Pestaña "Adicionales"
+- CompaniesPage.js - Sección campos adicionales
+- EmployeesPage.js - Sección campos adicionales
+- ExternalServicesPage.js - Sección campos adicionales
+- MaintenancePage.js - Sección campos adicionales
 
 ## Credenciales de Prueba
 - Email: admin@inventarioti.com
@@ -74,15 +73,29 @@ Migración de sistema PHP de inventario TI a stack moderno con mejoras de interf
 ```
 /app/backend/server.py        # API completa
 /app/frontend/src/pages/
-├── EquipmentPage.js          # Formulario con tabs
+├── CustomFieldsPage.js       # Gestión de campos personalizados ✨
+├── EquipmentPage.js          # Formulario con tabs y custom fields
 ├── EquipmentDetailPage.js    # Detalle + historial mantenimiento
-├── MaintenancePage.js        # Bitácoras por tipo
+├── MaintenancePage.js        # Bitácoras por tipo + custom fields
+├── CompaniesPage.js          # Empresas + custom fields
+├── EmployeesPage.js          # Empleados + custom fields
+├── ExternalServicesPage.js   # Servicios externos + custom fields
 ├── InvoicesPage.js           # Facturas CFDI
 ├── QuotationsPage.js         # Cotizaciones RFC
 └── DashboardPage.js          # KPIs
+/app/frontend/src/components/
+└── CustomFieldsRenderer.js   # Componente reutilizable ✨
 ```
 
 ## Endpoints API
+
+### Campos Personalizados (NUEVO)
+- `GET /api/custom-fields` - Listar campos (filtro por entity_type)
+- `POST /api/custom-fields` - Crear campo
+- `PUT /api/custom-fields/{id}` - Actualizar campo
+- `DELETE /api/custom-fields/{id}` - Eliminar campo (soft delete)
+
+### Existentes
 - `POST /api/auth/login` - Autenticación
 - `GET/POST /api/equipment` - Equipos con hardware/software
 - `GET/POST /api/maintenance` - Mantenimientos
@@ -92,7 +105,13 @@ Migración de sistema PHP de inventario TI a stack moderno con mejoras de interf
 - `GET/POST /api/quotations` - Cotizaciones
 
 ## Next Steps
-1. **P0**: Integración con PAC para timbrado CFDI (Facturama, Finkok, etc.)
-2. **P1**: UI para campos personalizados dinámicos
-3. **P1**: Notificaciones email (configurar Resend)
-4. **P2**: Alertas de renovación de servicios
+1. **P1**: Integración con PAC para timbrado CFDI (requiere elegir proveedor)
+2. **P1**: Notificaciones email (configurar Resend)
+3. **P2**: Alertas de renovación de servicios
+
+## Campos Personalizados Creados (Ejemplos)
+- Equipos: "Número de Activo Fijo"
+- Empresas: "Código SAP"
+- Empleados: "Número de Empleado"
+- Servicios: "Contrato Número"
+- Mantenimientos: "Orden de Trabajo"
