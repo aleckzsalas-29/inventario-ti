@@ -31,7 +31,6 @@ export default function EmployeesPage() {
   const [form, setForm] = useState({
     company_id: '',
     branch_id: '',
-    dni: '',
     first_name: '',
     last_name: '',
     position: '',
@@ -79,7 +78,7 @@ export default function EmployeesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.company_id || !form.dni || !form.first_name || !form.last_name) {
+    if (!form.company_id || !form.first_name || !form.last_name) {
       toast.error('Complete los campos obligatorios');
       return;
     }
@@ -109,7 +108,6 @@ export default function EmployeesPage() {
     setForm({
       company_id: emp.company_id,
       branch_id: emp.branch_id || '',
-      dni: emp.dni,
       first_name: emp.first_name,
       last_name: emp.last_name,
       position: emp.position || '',
@@ -137,7 +135,6 @@ export default function EmployeesPage() {
     setForm({
       company_id: '',
       branch_id: '',
-      dni: '',
       first_name: '',
       last_name: '',
       position: '',
@@ -154,7 +151,7 @@ export default function EmployeesPage() {
     return (
       emp.first_name?.toLowerCase().includes(search) ||
       emp.last_name?.toLowerCase().includes(search) ||
-      emp.dni?.toLowerCase().includes(search) ||
+      emp.email?.toLowerCase().includes(search) ||
       emp.email?.toLowerCase().includes(search) ||
       emp.position?.toLowerCase().includes(search)
     );

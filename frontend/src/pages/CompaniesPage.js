@@ -228,7 +228,7 @@ export default function CompaniesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>RUC / NIT</Label>
+                <Label>RFC</Label>
                 <Input
                   value={companyForm.tax_id}
                   onChange={(e) => setCompanyForm({...companyForm, tax_id: e.target.value})}
@@ -329,7 +329,7 @@ export default function CompaniesPage() {
                         <div>
                           <p className="font-medium">{company.name}</p>
                           {company.tax_id && (
-                            <p className="text-xs text-muted-foreground">RUC: {company.tax_id}</p>
+                            <p className="text-xs text-muted-foreground">RFC: {company.tax_id}</p>
                           )}
                         </div>
                         <DropdownMenu>
@@ -376,7 +376,7 @@ export default function CompaniesPage() {
                     {selectedCompany.tax_id && (
                       <div className="flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm">RUC: {selectedCompany.tax_id}</span>
+                        <span className="text-sm">RFC: {selectedCompany.tax_id}</span>
                       </div>
                     )}
                     {selectedCompany.phone && (
