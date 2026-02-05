@@ -51,6 +51,9 @@ export default function MaintenancePage() {
     parts_used: ''
   });
 
+  // Custom fields for maintenance
+  const [customFieldValues, setCustomFieldValues] = useState({});
+
   const [completeForm, setCompleteForm] = useState({ notes: '', solution: '', repair_time: '' });
 
   useEffect(() => {
@@ -80,7 +83,8 @@ export default function MaintenancePage() {
     }
     setSaving(true);
     try {
-      await maintenanceAPI.create(form);
+      const payload = { ...form, custom_fields: customFieldValues };
+      await maintenanceAPI.create(payload);
       toast.success('Bitácora de mantenimiento creada');
       setDialogOpen(false);
       resetForm();
@@ -137,6 +141,7 @@ export default function MaintenancePage() {
 
   const resetForm = () => {
     setForm({ equipment_id: '', maintenance_type: 'Preventivo', description: '', technician: '', next_maintenance_date: '', maintenance_frequency: '', problem_diagnosis: '', solution_applied: '', repair_time_hours: '', parts_used: '' });
+    setCustomFieldValues({});
   };
 
   const filteredLogs = logs.filter(log => {
