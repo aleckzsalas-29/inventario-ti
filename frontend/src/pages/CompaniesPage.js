@@ -25,12 +25,14 @@ export default function CompaniesPage() {
   const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [companyForm, setCompanyForm] = useState({ name: '', address: '', phone: '', email: '', tax_id: '' });
+  const [companyCustomFields, setCompanyCustomFields] = useState({});
   const [savingCompany, setSavingCompany] = useState(false);
   
   // Branch Dialog
   const [branchDialogOpen, setBranchDialogOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState(null);
   const [branchForm, setBranchForm] = useState({ company_id: '', name: '', address: '', phone: '' });
+  const [branchCustomFields, setBranchCustomFields] = useState({});
   const [savingBranch, setSavingBranch] = useState(false);
 
   useEffect(() => {
@@ -76,11 +78,12 @@ export default function CompaniesPage() {
 
     setSavingCompany(true);
     try {
+      const payload = { ...companyForm, custom_fields: companyCustomFields };
       if (editingCompany) {
-        await companiesAPI.update(editingCompany.id, companyForm);
+        await companiesAPI.update(editingCompany.id, payload);
         toast.success('Empresa actualizada');
       } else {
-        await companiesAPI.create(companyForm);
+        await companiesAPI.create(payload);
         toast.success('Empresa creada');
       }
       setCompanyDialogOpen(false);
@@ -102,6 +105,7 @@ export default function CompaniesPage() {
       email: company.email || '',
       tax_id: company.tax_id || ''
     });
+    setCompanyCustomFields(company.custom_fields || {});
     setCompanyDialogOpen(true);
   };
 
@@ -122,6 +126,7 @@ export default function CompaniesPage() {
   const resetCompanyForm = () => {
     setEditingCompany(null);
     setCompanyForm({ name: '', address: '', phone: '', email: '', tax_id: '' });
+    setCompanyCustomFields({});
   };
 
   // Branch handlers
@@ -134,11 +139,12 @@ export default function CompaniesPage() {
 
     setSavingBranch(true);
     try {
+      const payload = { ...branchForm, custom_fields: branchCustomFields };
       if (editingBranch) {
-        await branchesAPI.update(editingBranch.id, branchForm);
+        await branchesAPI.update(editingBranch.id, payload);
         toast.success('Sucursal actualizada');
       } else {
-        await branchesAPI.create({ ...branchForm, company_id: selectedCompany.id });
+        await branchesAPI.create({ ...payload, company_id: selectedCompany.id });
         toast.success('Sucursal creada');
       }
       setBranchDialogOpen(false);
@@ -159,6 +165,7 @@ export default function CompaniesPage() {
       address: branch.address || '',
       phone: branch.phone || ''
     });
+    setBranchCustomFields(branch.custom_fields || {});
     setBranchDialogOpen(true);
   };
 
@@ -176,6 +183,7 @@ export default function CompaniesPage() {
   const resetBranchForm = () => {
     setEditingBranch(null);
     setBranchForm({ company_id: '', name: '', address: '', phone: '' });
+    setBranchCustomFields({});
   };
 
   const filteredCompanies = companies.filter(c => 
