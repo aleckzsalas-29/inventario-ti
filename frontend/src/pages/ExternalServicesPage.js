@@ -43,6 +43,9 @@ export default function ExternalServicesPage() {
     payment_frequency: '',
     credentials_info: ''
   });
+  
+  // Custom fields
+  const [customFieldValues, setCustomFieldValues] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -74,7 +77,8 @@ export default function ExternalServicesPage() {
     try {
       const data = {
         ...form,
-        cost: form.cost ? parseFloat(form.cost) : 0
+        cost: form.cost ? parseFloat(form.cost) : 0,
+        custom_fields: customFieldValues
       };
       
       if (editingService) {
@@ -107,6 +111,7 @@ export default function ExternalServicesPage() {
       payment_frequency: svc.payment_frequency || '',
       credentials_info: svc.credentials_info || ''
     });
+    setCustomFieldValues(svc.custom_fields || {});
     setDialogOpen(true);
   };
 
@@ -134,6 +139,7 @@ export default function ExternalServicesPage() {
       payment_frequency: '',
       credentials_info: ''
     });
+    setCustomFieldValues({});
   };
 
   const getServiceIcon = (type) => {
