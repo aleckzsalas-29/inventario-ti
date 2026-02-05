@@ -1571,6 +1571,134 @@ async def update_invoice_status(invoice_id: str, status: str, current_user: dict
         raise HTTPException(status_code=404, detail="Factura no encontrada")
     return {"message": f"Estado actualizado a {status}"}
 
+# ==================== PAC / CFDI TIMBRADO ENDPOINTS ====================
+
+@api_router.get("/pac/status")
+async def get_pac_status(current_user: dict = Depends(get_current_user)):
+    """Check if PAC is configured and connection status"""
+    if not PAC_PROVIDER or not PAC_API_KEY:
+        return {
+            "configured": False,
+            "provider": None,
+            "sandbox": True,
+            "message": "PAC no configurado. Configure PAC_PROVIDER, PAC_API_KEY y PAC_API_SECRET en las variables de entorno."
+        }
+    return {
+        "configured": True,
+        "provider": PAC_PROVIDER,
+        "sandbox": PAC_SANDBOX,
+        "message": f"PAC {PAC_PROVIDER} configurado en modo {'sandbox' if PAC_SANDBOX else 'producción'}"
+    }
+
+@api_router.post("/invoices/{invoice_id}/timbrar")
+async def timbrar_invoice(invoice_id: str, current_user: dict = Depends(get_current_user)):
+    """Stamp an invoice with PAC (CFDI timbrado)"""
+    await check_permission(current_user, "invoices.write")
+    
+    # Check PAC configuration
+    if not PAC_PROVIDER or not PAC_API_KEY:
+        raise HTTPException(
+            status_code=400, 
+            detail="PAC no configurado. Configure PAC_PROVIDER, PAC_API_KEY y PAC_API_SECRET."
+        )
+    
+    # Get invoice
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    
+    if invoice.get("uuid_fiscal"):
+        raise HTTPException(status_code=400, detail="La factura ya está timbrada")
+    
+    if not invoice.get("client_rfc"):
+        raise HTTPException(status_code=400, detail="La factura requiere RFC del receptor")
+    
+    # Get company (emisor) data
+    company = await db.companies.find_one({"id": invoice["company_id"]}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=400, detail="Empresa emisora no encontrada")
+    
+    # Build CFDI data structure (this would be sent to PAC)
+    cfdi_data = {
+        "version": "4.0",
+        "serie": invoice.get("serie", "A"),
+        "folio": invoice.get("folio"),
+        "fecha": datetime.now(timezone.utc).isoformat(),
+        "forma_pago": invoice.get("forma_pago", "03"),
+        "metodo_pago": invoice.get("metodo_pago", "PUE"),
+        "moneda": invoice.get("moneda", "MXN"),
+        "tipo_cambio": invoice.get("tipo_cambio"),
+        "tipo_comprobante": "I",  # Ingreso
+        "lugar_expedicion": company.get("postal_code", "00000"),
+        "emisor": {
+            "rfc": company.get("rfc", ""),
+            "nombre": company.get("name", ""),
+            "regimen_fiscal": company.get("regimen_fiscal", "601")
+        },
+        "receptor": {
+            "rfc": invoice.get("client_rfc"),
+            "nombre": invoice.get("client_name"),
+            "uso_cfdi": invoice.get("uso_cfdi", "G03"),
+            "regimen_fiscal": invoice.get("client_regimen_fiscal"),
+            "domicilio_fiscal": invoice.get("client_codigo_postal")
+        },
+        "conceptos": invoice.get("items", []),
+        "subtotal": invoice.get("subtotal"),
+        "total": invoice.get("total"),
+        "impuestos": {
+            "traslados": [{
+                "impuesto": "002",  # IVA
+                "tasa": invoice.get("tax_rate", 16) / 100,
+                "importe": invoice.get("tax_amount")
+            }]
+        }
+    }
+    
+    # TODO: Implement actual PAC integration based on PAC_PROVIDER
+    # For now, return a message indicating PAC integration is pending
+    #
+    # Example implementation structure:
+    # if PAC_PROVIDER == 'facturama':
+    #     from facturama import Facturama
+    #     facturama = Facturama(PAC_API_KEY, PAC_API_SECRET, sandbox=PAC_SANDBOX)
+    #     result = facturama.stamp(cfdi_data)
+    # elif PAC_PROVIDER == 'finkok':
+    #     from finkok import Finkok
+    #     finkok = Finkok(PAC_API_KEY, PAC_API_SECRET, sandbox=PAC_SANDBOX)
+    #     result = finkok.stamp(cfdi_data)
+    
+    raise HTTPException(
+        status_code=501,
+        detail=f"Timbrado con {PAC_PROVIDER} pendiente de implementación. Contacte al administrador para completar la integración."
+    )
+
+@api_router.post("/invoices/{invoice_id}/cancel")
+async def cancel_timbrado(invoice_id: str, motivo: str = "02", current_user: dict = Depends(get_current_user)):
+    """Cancel a stamped invoice (CFDI cancellation)"""
+    await check_permission(current_user, "invoices.write")
+    
+    if not PAC_PROVIDER or not PAC_API_KEY:
+        raise HTTPException(status_code=400, detail="PAC no configurado")
+    
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    
+    if not invoice.get("uuid_fiscal"):
+        raise HTTPException(status_code=400, detail="La factura no está timbrada")
+    
+    # TODO: Implement actual PAC cancellation
+    # Motivos de cancelación SAT:
+    # 01 - Comprobante emitido con errores con relación
+    # 02 - Comprobante emitido con errores sin relación
+    # 03 - No se llevó a cabo la operación
+    # 04 - Operación nominativa relacionada en una factura global
+    
+    raise HTTPException(
+        status_code=501,
+        detail="Cancelación de CFDI pendiente de implementación"
+    )
+
 # ==================== DASHBOARD STATS ENDPOINT ====================
 
 @api_router.get("/dashboard/stats")
