@@ -4,21 +4,15 @@ const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const api = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor to add token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -30,18 +24,15 @@ api.interceptors.response.use(
   }
 );
 
-// Auth
 export const authAPI = {
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
 };
 
-// Dashboard
 export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
 };
 
-// Users
 export const usersAPI = {
   getAll: () => api.get('/users'),
   create: (data) => api.post('/users', data),
@@ -49,7 +40,6 @@ export const usersAPI = {
   delete: (id) => api.delete(`/users/${id}`),
 };
 
-// Roles
 export const rolesAPI = {
   getAll: () => api.get('/roles'),
   create: (data) => api.post('/roles', data),
@@ -57,7 +47,13 @@ export const rolesAPI = {
   getPermissions: () => api.get('/permissions'),
 };
 
-// Companies
+export const customFieldsAPI = {
+  getAll: (entityType) => api.get('/custom-fields', { params: { entity_type: entityType } }),
+  create: (data) => api.post('/custom-fields', data),
+  update: (id, data) => api.put(`/custom-fields/${id}`, data),
+  delete: (id) => api.delete(`/custom-fields/${id}`),
+};
+
 export const companiesAPI = {
   getAll: () => api.get('/companies'),
   create: (data) => api.post('/companies', data),
@@ -65,7 +61,6 @@ export const companiesAPI = {
   delete: (id) => api.delete(`/companies/${id}`),
 };
 
-// Branches
 export const branchesAPI = {
   getAll: (companyId) => api.get('/branches', { params: { company_id: companyId } }),
   create: (data) => api.post('/branches', data),
@@ -73,7 +68,6 @@ export const branchesAPI = {
   delete: (id) => api.delete(`/branches/${id}`),
 };
 
-// Employees
 export const employeesAPI = {
   getAll: (params) => api.get('/employees', { params }),
   create: (data) => api.post('/employees', data),
@@ -81,15 +75,6 @@ export const employeesAPI = {
   delete: (id) => api.delete(`/employees/${id}`),
 };
 
-// Equipment Fields
-export const equipmentFieldsAPI = {
-  getAll: () => api.get('/equipment-fields'),
-  create: (data) => api.post('/equipment-fields', data),
-  update: (id, data) => api.put(`/equipment-fields/${id}`, data),
-  delete: (id) => api.delete(`/equipment-fields/${id}`),
-};
-
-// Equipment
 export const equipmentAPI = {
   getAll: (params) => api.get('/equipment', { params }),
   getById: (id) => api.get(`/equipment/${id}`),
@@ -100,27 +85,24 @@ export const equipmentAPI = {
   createLog: (id, data) => api.post(`/equipment/${id}/logs`, data),
 };
 
-// Assignments
 export const assignmentsAPI = {
   getAll: (params) => api.get('/assignments', { params }),
   create: (data) => api.post('/assignments', data),
   return: (id, observations) => api.put(`/assignments/${id}/return`, null, { params: { observations } }),
 };
 
-// Repairs
-export const repairsAPI = {
-  getAll: (params) => api.get('/repairs', { params }),
-  create: (data) => api.post('/repairs', data),
-  finish: (id, params) => api.put(`/repairs/${id}/finish`, null, { params }),
+export const maintenanceAPI = {
+  getAll: (params) => api.get('/maintenance', { params }),
+  create: (data) => api.post('/maintenance', data),
+  start: (id) => api.put(`/maintenance/${id}/start`),
+  complete: (id, notes) => api.put(`/maintenance/${id}/complete`, null, { params: { notes } }),
 };
 
-// Decommissions
 export const decommissionsAPI = {
   getAll: () => api.get('/decommissions'),
   create: (data) => api.post('/decommissions', data),
 };
 
-// External Services
 export const externalServicesAPI = {
   getAll: (params) => api.get('/external-services', { params }),
   create: (data) => api.post('/external-services', data),
@@ -128,7 +110,6 @@ export const externalServicesAPI = {
   delete: (id) => api.delete(`/external-services/${id}`),
 };
 
-// Quotations
 export const quotationsAPI = {
   getAll: (params) => api.get('/quotations', { params }),
   getById: (id) => api.get(`/quotations/${id}`),
@@ -137,7 +118,6 @@ export const quotationsAPI = {
   downloadPdf: (id) => api.get(`/quotations/${id}/pdf`, { responseType: 'blob' }),
 };
 
-// Invoices
 export const invoicesAPI = {
   getAll: (params) => api.get('/invoices', { params }),
   getById: (id) => api.get(`/invoices/${id}`),
@@ -146,13 +126,11 @@ export const invoicesAPI = {
   downloadPdf: (id) => api.get(`/invoices/${id}/pdf`, { responseType: 'blob' }),
 };
 
-// Reports
 export const reportsAPI = {
   equipmentPdf: (params) => api.get('/reports/equipment/pdf', { params, responseType: 'blob' }),
   equipmentLogsPdf: (id) => api.get(`/reports/equipment-logs/${id}/pdf`, { responseType: 'blob' }),
 };
 
-// Notifications
 export const notificationsAPI = {
   sendEmail: (data) => api.post('/notifications/email', data),
 };
