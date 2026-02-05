@@ -8,10 +8,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { 
   Plus, Building2, MapPin, Phone, Mail, Edit, Trash2, 
-  MoreVertical, Loader2, Search
+  MoreVertical, Loader2, Search, SlidersHorizontal
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import CustomFieldsRenderer, { CustomFieldsDisplay } from '../components/CustomFieldsRenderer';
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState([]);

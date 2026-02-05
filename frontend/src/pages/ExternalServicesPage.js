@@ -10,9 +10,10 @@ import { Textarea } from '../components/ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { 
   Plus, Server, Globe, Shield, Cloud, HardDrive, Edit, Trash2, 
-  MoreVertical, Loader2, Search, Calendar, DollarSign, AlertCircle
+  MoreVertical, Loader2, Search, Calendar, DollarSign, AlertCircle, SlidersHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
+import CustomFieldsRenderer from '../components/CustomFieldsRenderer';
 
 const SERVICE_TYPES = ['Hosting', 'Servidor Privado', 'Dominio', 'SSL', 'Cloud Storage', 'VPS', 'CDN', 'Backup', 'Otro'];
 const PAYMENT_FREQUENCIES = ['Mensual', 'Trimestral', 'Semestral', 'Anual', 'Único'];

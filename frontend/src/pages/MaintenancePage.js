@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
-import { Plus, Wrench, Loader2, Search, Play, Check, X, Download, ClipboardCheck, Settings, Clock } from 'lucide-react';
+import { Plus, Wrench, Loader2, Search, Play, Check, X, Download, ClipboardCheck, Settings, Clock, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
+import CustomFieldsRenderer from '../components/CustomFieldsRenderer';
 
 const MAINTENANCE_TYPES = [
   { value: 'Preventivo', label: 'Preventivo', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },

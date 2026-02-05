@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { 
-  Plus, Search, Users, Edit, Trash2, MoreVertical, Loader2, X, Mail, Briefcase
+  Plus, Search, Users, Edit, Trash2, MoreVertical, Loader2, X, Mail, Briefcase, SlidersHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
+import CustomFieldsRenderer from '../components/CustomFieldsRenderer';
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState([]);
