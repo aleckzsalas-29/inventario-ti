@@ -23,7 +23,7 @@ const navItems = [
   { icon: Building2, label: 'Empresas', path: '/companies' },
   { icon: Users, label: 'Empleados', path: '/employees' },
   { icon: UserCheck, label: 'Asignaciones', path: '/assignments' },
-  { icon: Wrench, label: 'Reparaciones', path: '/repairs' },
+  { icon: Wrench, label: 'Mantenimientos', path: '/maintenance' },
   { icon: Server, label: 'Servicios Externos', path: '/services' },
   { icon: FileText, label: 'Cotizaciones', path: '/quotations' },
   { icon: Receipt, label: 'Facturas', path: '/invoices' },

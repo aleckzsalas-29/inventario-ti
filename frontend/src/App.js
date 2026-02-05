@@ -13,7 +13,7 @@ import EquipmentDetailPage from "./pages/EquipmentDetailPage";
 import CompaniesPage from "./pages/CompaniesPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import AssignmentsPage from "./pages/AssignmentsPage";
-import RepairsPage from "./pages/RepairsPage";
+import MaintenancePage from "./pages/MaintenancePage";
 import ExternalServicesPage from "./pages/ExternalServicesPage";
 import QuotationsPage from "./pages/QuotationsPage";
 import InvoicesPage from "./pages/InvoicesPage";
@@ -79,7 +79,7 @@ function AppRoutes() {
         <Route path="companies" element={<CompaniesPage />} />
         <Route path="employees" element={<EmployeesPage />} />
         <Route path="assignments" element={<AssignmentsPage />} />
-        <Route path="repairs" element={<RepairsPage />} />
+        <Route path="maintenance" element={<MaintenancePage />} />
         <Route path="services" element={<ExternalServicesPage />} />
         <Route path="quotations" element={<QuotationsPage />} />
         <Route path="invoices" element={<InvoicesPage />} />

@@ -95,12 +95,12 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="stat-card" data-testid="kpi-in-repair">
+        <Card className="stat-card" data-testid="kpi-in-maintenance">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">En Reparación</p>
-                <p className="text-3xl font-bold mt-1 text-amber-600">{stats?.active_repairs || 0}</p>
+                <p className="text-sm font-medium text-muted-foreground">En Mantenimiento</p>
+                <p className="text-3xl font-bold mt-1 text-amber-600">{stats?.active_maintenance || 0}</p>
               </div>
               <div className="kpi-icon bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
                 <Wrench className="w-6 h-6" />
@@ -176,8 +176,8 @@ export default function DashboardPage() {
                 <span className="text-xl font-bold text-blue-600">{equipment.assigned || 0}</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20">
-                <span className="text-sm font-medium">En Reparación</span>
-                <span className="text-xl font-bold text-amber-600">{equipment.in_repair || 0}</span>
+                <span className="text-sm font-medium">En Mantenimiento</span>
+                <span className="text-xl font-bold text-amber-600">{equipment.in_maintenance || 0}</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
                 <span className="text-sm font-medium">De Baja</span>
