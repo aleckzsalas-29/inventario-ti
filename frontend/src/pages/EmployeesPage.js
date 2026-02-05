@@ -306,12 +306,12 @@ export default function EmployeesPage() {
                 />
               </div>
             </div>
-            <Select value={filterCompany} onValueChange={(value) => { setFilterCompany(value); setFilterBranch(''); }}>
+            <Select value={filterCompany || "all"} onValueChange={(value) => { setFilterCompany(value === "all" ? "" : value); setFilterBranch(''); }}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Empresa" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 {companies.map(c => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}

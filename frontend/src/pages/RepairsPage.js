@@ -225,12 +225,12 @@ export default function RepairsPage() {
                 />
               </div>
             </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select value={filterStatus || "all"} onValueChange={(v) => setFilterStatus(v === "all" ? "" : v)}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 <SelectItem value="En Proceso">En Proceso</SelectItem>
                 <SelectItem value="Finalizada">Finalizadas</SelectItem>
               </SelectContent>
