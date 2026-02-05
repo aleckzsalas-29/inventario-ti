@@ -515,6 +515,7 @@ export default function CustomFieldsPage() {
                 <div className="space-y-2">
                   {entityFields.map((field) => {
                     const FieldIcon = getFieldTypeIcon(field.field_type);
+                    const hasValidation = field.validation && Object.keys(field.validation).some(k => field.validation[k] !== null && field.validation[k] !== undefined);
                     return (
                       <div
                         key={field.id}
@@ -534,7 +535,11 @@ export default function CustomFieldsPage() {
                               {getFieldTypeLabel(field.field_type)}
                               {field.options && ` • ${field.options.length} opciones`}
                               {field.category && ` • ${field.category}`}
+                              {hasValidation && ' • ✓ Validado'}
                             </p>
+                            {field.help_text && (
+                              <p className="text-xs text-blue-500">{field.help_text}</p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
