@@ -93,9 +93,12 @@ export const assignmentsAPI = {
 
 export const maintenanceAPI = {
   getAll: (params) => api.get('/maintenance', { params }),
+  getHistory: (equipmentId) => api.get(`/maintenance/history/${equipmentId}`),
   create: (data) => api.post('/maintenance', data),
   start: (id) => api.put(`/maintenance/${id}/start`),
-  complete: (id, notes) => api.put(`/maintenance/${id}/complete`, null, { params: { notes } }),
+  complete: (id, notes, solution, repairTime) => api.put(`/maintenance/${id}/complete`, null, { 
+    params: { notes, solution, repair_time: repairTime } 
+  }),
 };
 
 export const decommissionsAPI = {
@@ -129,6 +132,7 @@ export const invoicesAPI = {
 export const reportsAPI = {
   equipmentPdf: (params) => api.get('/reports/equipment/pdf', { params, responseType: 'blob' }),
   equipmentLogsPdf: (id) => api.get(`/reports/equipment-logs/${id}/pdf`, { responseType: 'blob' }),
+  maintenanceHistoryPdf: (id) => api.get(`/reports/maintenance/${id}/pdf`, { responseType: 'blob' }),
 };
 
 export const notificationsAPI = {
