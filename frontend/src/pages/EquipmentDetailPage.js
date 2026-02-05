@@ -9,7 +9,8 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { 
   ArrowLeft, Monitor, Download, Plus, Clock, Wrench, AlertTriangle,
-  FileText, Loader2, Calendar, Building2, User, Tag
+  FileText, Loader2, Calendar, Building2, User, Tag, KeyRound, Mail, 
+  Cloud, Eye, EyeOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -24,6 +25,11 @@ export default function EquipmentDetailPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [logForm, setLogForm] = useState({ log_type: 'Nota', description: '' });
+  const [showPasswords, setShowPasswords] = useState({
+    windows: false,
+    email: false,
+    cloud: false
+  });
 
   useEffect(() => {
     fetchData();
@@ -86,7 +92,7 @@ export default function EquipmentDetailPage() {
     const classes = {
       'Disponible': 'status-disponible',
       'Asignado': 'status-asignado',
-      'En Reparacion': 'status-reparacion',
+      'En Mantenimiento': 'status-reparacion',
       'De Baja': 'status-baja'
     };
     return `status-badge ${classes[status] || ''}`;
@@ -240,6 +246,109 @@ export default function EquipmentDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Credentials Card */}
+          {(equipment.windows_user || equipment.email_account || equipment.cloud_user) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <KeyRound className="w-5 h-5 text-primary" />
+                  Credenciales
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Windows Credentials */}
+                {(equipment.windows_user || equipment.windows_password) && (
+                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Monitor className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium">Windows</span>
+                    </div>
+                    {equipment.windows_user && (
+                      <div className="text-sm mb-1">
+                        <span className="text-muted-foreground">Usuario: </span>
+                        <span className="font-mono">{equipment.windows_user}</span>
+                      </div>
+                    )}
+                    {equipment.windows_password && (
+                      <div className="text-sm flex items-center gap-2">
+                        <span className="text-muted-foreground">Contraseña: </span>
+                        <span className="font-mono">
+                          {showPasswords.windows ? equipment.windows_password : '••••••••'}
+                        </span>
+                        <button
+                          onClick={() => setShowPasswords({...showPasswords, windows: !showPasswords.windows})}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          {showPasswords.windows ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Email Credentials */}
+                {(equipment.email_account || equipment.email_password) && (
+                  <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Mail className="w-4 h-4 text-amber-600" />
+                      <span className="text-sm font-medium">Correo</span>
+                    </div>
+                    {equipment.email_account && (
+                      <div className="text-sm mb-1">
+                        <span className="text-muted-foreground">Cuenta: </span>
+                        <span className="font-mono">{equipment.email_account}</span>
+                      </div>
+                    )}
+                    {equipment.email_password && (
+                      <div className="text-sm flex items-center gap-2">
+                        <span className="text-muted-foreground">Contraseña: </span>
+                        <span className="font-mono">
+                          {showPasswords.email ? equipment.email_password : '••••••••'}
+                        </span>
+                        <button
+                          onClick={() => setShowPasswords({...showPasswords, email: !showPasswords.email})}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          {showPasswords.email ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Cloud Credentials */}
+                {(equipment.cloud_user || equipment.cloud_password) && (
+                  <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Cloud className="w-4 h-4 text-emerald-600" />
+                      <span className="text-sm font-medium">Nube</span>
+                    </div>
+                    {equipment.cloud_user && (
+                      <div className="text-sm mb-1">
+                        <span className="text-muted-foreground">Usuario: </span>
+                        <span className="font-mono">{equipment.cloud_user}</span>
+                      </div>
+                    )}
+                    {equipment.cloud_password && (
+                      <div className="text-sm flex items-center gap-2">
+                        <span className="text-muted-foreground">Contraseña: </span>
+                        <span className="font-mono">
+                          {showPasswords.cloud ? equipment.cloud_password : '••••••••'}
+                        </span>
+                        <button
+                          onClick={() => setShowPasswords({...showPasswords, cloud: !showPasswords.cloud})}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          {showPasswords.cloud ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Logs / Bitácora */}
