@@ -268,7 +268,7 @@ export default function UsersPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Empresa (opcional)</Label>
-                    <Select value={userForm.company_id} onValueChange={(value) => setUserForm({...userForm, company_id: value})}>
+                    <Select value={userForm.company_id || "none"} onValueChange={(value) => setUserForm({...userForm, company_id: value === "none" ? "" : value})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Sin empresa" />
                       </SelectTrigger>
