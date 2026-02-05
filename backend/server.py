@@ -161,7 +161,7 @@ class BranchResponse(BaseModel):
 class EmployeeCreate(BaseModel):
     company_id: str
     branch_id: Optional[str] = None
-    dni: str
+    dni: Optional[str] = None
     first_name: str
     last_name: str
     position: Optional[str] = None
@@ -176,7 +176,7 @@ class EmployeeResponse(BaseModel):
     company_name: Optional[str] = None
     branch_id: Optional[str] = None
     branch_name: Optional[str] = None
-    dni: str
+    dni: Optional[str] = None
     first_name: str
     last_name: str
     full_name: Optional[str] = None
