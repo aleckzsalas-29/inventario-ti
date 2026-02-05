@@ -710,7 +710,17 @@ async def create_custom_field(field_data: CustomFieldCreate, current_user: dict 
 async def update_custom_field(field_id: str, field_data: CustomFieldCreate, current_user: dict = Depends(get_current_user)):
     await check_permission(current_user, "custom_fields.write")
     
-    update_data = field_data.model_dump()
+    update_data = {
+        "entity_type": field_data.entity_type,
+        "name": field_data.name,
+        "field_type": field_data.field_type,
+        "options": field_data.options,
+        "required": field_data.required,
+        "category": field_data.category,
+        "validation": field_data.validation.model_dump() if field_data.validation else None,
+        "placeholder": field_data.placeholder,
+        "help_text": field_data.help_text
+    }
     result = await db.custom_fields.update_one({"id": field_id}, {"$set": update_data})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Campo no encontrado")
