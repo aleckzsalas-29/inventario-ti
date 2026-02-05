@@ -698,6 +698,9 @@ async def create_custom_field(field_data: CustomFieldCreate, current_user: dict 
         "options": field_data.options,
         "required": field_data.required,
         "category": field_data.category,
+        "validation": field_data.validation.model_dump() if field_data.validation else None,
+        "placeholder": field_data.placeholder,
+        "help_text": field_data.help_text,
         "is_active": True
     }
     await db.custom_fields.insert_one(field)
