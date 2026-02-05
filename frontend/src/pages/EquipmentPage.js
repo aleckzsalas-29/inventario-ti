@@ -289,11 +289,12 @@ export default function EquipmentPage() {
               </DialogHeader>
               <form onSubmit={handleSubmit}>
                 <Tabs defaultValue="general" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
+                  <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="hardware">Hardware</TabsTrigger>
                     <TabsTrigger value="software">Software</TabsTrigger>
                     <TabsTrigger value="credentials">Credenciales</TabsTrigger>
+                    <TabsTrigger value="custom">Adicionales</TabsTrigger>
                   </TabsList>
 
                   {/* General Tab */}
