@@ -342,7 +342,6 @@ export default function EmployeesPage() {
               <table className="data-table">
                 <thead>
                   <tr className="border-b">
-                    <th className="pb-3">DNI</th>
                     <th className="pb-3">Nombre Completo</th>
                     <th className="pb-3">Cargo</th>
                     <th className="pb-3">Departamento</th>
@@ -354,7 +353,6 @@ export default function EmployeesPage() {
                 <tbody>
                   {filteredEmployees.map((emp) => (
                     <tr key={emp.id} data-testid={`employee-row-${emp.id}`}>
-                      <td className="font-mono text-sm">{emp.dni}</td>
                       <td className="font-medium">{emp.first_name} {emp.last_name}</td>
                       <td>{emp.position || '-'}</td>
                       <td>{emp.department || '-'}</td>
