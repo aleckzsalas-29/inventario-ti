@@ -1470,7 +1470,7 @@ async def create_quotation(quot_data: QuotationCreate, current_user: dict = Depe
 @api_router.put("/quotations/{quotation_id}/status")
 async def update_quotation_status(quotation_id: str, status: str, current_user: dict = Depends(get_current_user)):
     await check_permission(current_user, "quotations.write")
-    if status not in ["Pendiente", "Aceptada", "Rechazada", "Convertida"]:
+    if status not in ["Pendiente", "Aprobada", "Aceptada", "Rechazada", "Convertida"]:
         raise HTTPException(status_code=400, detail="Estado inválido")
     result = await db.quotations.update_one({"id": quotation_id}, {"$set": {"status": status}})
     if result.matched_count == 0:
