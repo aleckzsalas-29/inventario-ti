@@ -313,6 +313,140 @@ export default function CustomFieldsPage() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Placeholder (opcional)</Label>
+                  <Input
+                    value={form.placeholder}
+                    onChange={(e) => setForm({...form, placeholder: e.target.value})}
+                    placeholder="Texto de ayuda en el campo"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Texto de ayuda (opcional)</Label>
+                  <Input
+                    value={form.help_text}
+                    onChange={(e) => setForm({...form, help_text: e.target.value})}
+                    placeholder="Instrucciones para el usuario"
+                  />
+                </div>
+              </div>
+
+              {/* Validation Section */}
+              <div className="border rounded-lg p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm">Validaciones</p>
+                    <p className="text-xs text-muted-foreground">Reglas de formato y rango</p>
+                  </div>
+                  <Switch
+                    checked={showValidation}
+                    onCheckedChange={setShowValidation}
+                  />
+                </div>
+                
+                {showValidation && (
+                  <div className="space-y-3 pt-2 border-t">
+                    {/* Text/Password validations */}
+                    {(form.field_type === 'text' || form.field_type === 'password') && (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Longitud mínima</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={form.validation.min_length}
+                              onChange={(e) => setForm({...form, validation: {...form.validation, min_length: e.target.value}})}
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Longitud máxima</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={form.validation.max_length}
+                              onChange={(e) => setForm({...form, validation: {...form.validation, max_length: e.target.value}})}
+                              placeholder="255"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Patrón Regex (avanzado)</Label>
+                          <Input
+                            value={form.validation.regex_pattern}
+                            onChange={(e) => setForm({...form, validation: {...form.validation, regex_pattern: e.target.value}})}
+                            placeholder="Ej: ^[A-Z]{3}-\d{4}$"
+                          />
+                          <p className="text-xs text-muted-foreground">Ej: ^[A-Z]&#123;3&#125;-\d&#123;4&#125;$ para código tipo ABC-1234</p>
+                        </div>
+                        {form.validation.regex_pattern && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">Mensaje de error regex</Label>
+                            <Input
+                              value={form.validation.regex_message}
+                              onChange={(e) => setForm({...form, validation: {...form.validation, regex_message: e.target.value}})}
+                              placeholder="Formato: ABC-1234"
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Number validations */}
+                    {form.field_type === 'number' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Valor mínimo</Label>
+                          <Input
+                            type="number"
+                            value={form.validation.min_value}
+                            onChange={(e) => setForm({...form, validation: {...form.validation, min_value: e.target.value}})}
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Valor máximo</Label>
+                          <Input
+                            type="number"
+                            value={form.validation.max_value}
+                            onChange={(e) => setForm({...form, validation: {...form.validation, max_value: e.target.value}})}
+                            placeholder="1000000"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Date validations */}
+                    {form.field_type === 'date' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Fecha mínima</Label>
+                          <Input
+                            type="date"
+                            value={form.validation.min_date}
+                            onChange={(e) => setForm({...form, validation: {...form.validation, min_date: e.target.value}})}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Fecha máxima</Label>
+                          <Input
+                            type="date"
+                            value={form.validation.max_date}
+                            onChange={(e) => setForm({...form, validation: {...form.validation, max_date: e.target.value}})}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {(form.field_type === 'select' || form.field_type === 'boolean') && (
+                      <p className="text-xs text-muted-foreground italic">Este tipo de campo no requiere validaciones adicionales.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div>
                   <p className="font-medium text-sm">Campo obligatorio</p>
