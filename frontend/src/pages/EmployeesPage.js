@@ -38,6 +38,9 @@ export default function EmployeesPage() {
     department: '',
     email: ''
   });
+  
+  // Custom fields
+  const [customFieldValues, setCustomFieldValues] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -83,11 +86,12 @@ export default function EmployeesPage() {
 
     setSaving(true);
     try {
+      const payload = { ...form, custom_fields: customFieldValues };
       if (editingEmployee) {
-        await employeesAPI.update(editingEmployee.id, form);
+        await employeesAPI.update(editingEmployee.id, payload);
         toast.success('Empleado actualizado');
       } else {
-        await employeesAPI.create(form);
+        await employeesAPI.create(payload);
         toast.success('Empleado registrado');
       }
       setDialogOpen(false);
@@ -112,6 +116,7 @@ export default function EmployeesPage() {
       department: emp.department || '',
       email: emp.email || ''
     });
+    setCustomFieldValues(emp.custom_fields || {});
     fetchBranches(emp.company_id);
     setDialogOpen(true);
   };
@@ -139,6 +144,7 @@ export default function EmployeesPage() {
       department: '',
       email: ''
     });
+    setCustomFieldValues({});
     setBranches([]);
   };
 
