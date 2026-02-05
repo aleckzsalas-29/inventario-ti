@@ -1442,8 +1442,11 @@ async def create_quotation(quot_data: QuotationCreate, current_user: dict = Depe
     subtotal = 0
     for item in quot_data.items:
         item_total = item.quantity * item.unit_price * (1 - item.discount / 100)
-        items.append({"description": item.description, "quantity": item.quantity,
-                      "unit_price": item.unit_price, "discount": item.discount, "total": round(item_total, 2)})
+        items.append({
+            "description": item.description, "quantity": item.quantity,
+            "unit_price": item.unit_price, "discount": item.discount, "total": round(item_total, 2),
+            "clave_prod_serv": item.clave_prod_serv, "clave_unidad": item.clave_unidad, "unidad": item.unidad
+        })
         subtotal += item_total
     tax_amount = subtotal * (quot_data.tax_rate / 100)
     total = subtotal + tax_amount
@@ -1451,10 +1454,13 @@ async def create_quotation(quot_data: QuotationCreate, current_user: dict = Depe
     quotation = {
         "id": generate_id(), "quotation_number": quotation_number, "company_id": quot_data.company_id,
         "client_name": quot_data.client_name, "client_email": quot_data.client_email,
-        "client_address": quot_data.client_address, "items": items, "subtotal": round(subtotal, 2),
+        "client_phone": quot_data.client_phone, "client_address": quot_data.client_address,
+        "client_rfc": quot_data.client_rfc, "client_regimen_fiscal": quot_data.client_regimen_fiscal,
+        "items": items, "subtotal": round(subtotal, 2),
         "tax_rate": quot_data.tax_rate, "tax_amount": round(tax_amount, 2), "total": round(total, 2),
-        "notes": quot_data.notes, "valid_until": valid_until, "status": "Pendiente",
-        "custom_fields": quot_data.custom_fields, "created_at": now_iso()
+        "notes": quot_data.notes, "terms_conditions": quot_data.terms_conditions,
+        "valid_until": valid_until, "status": "Pendiente",
+        "uso_cfdi": quot_data.uso_cfdi, "custom_fields": quot_data.custom_fields, "created_at": now_iso()
     }
     await db.quotations.insert_one(quotation)
     company = await db.companies.find_one({"id": quot_data.company_id}, {"_id": 0})
@@ -1502,24 +1508,45 @@ async def get_invoice_by_id(invoice_id: str, current_user: dict = Depends(get_cu
 @api_router.post("/invoices", response_model=InvoiceResponse)
 async def create_invoice(inv_data: InvoiceCreate, current_user: dict = Depends(get_current_user)):
     await check_permission(current_user, "invoices.write")
+    # Generate invoice number with optional serie
     count = await db.invoices.count_documents({})
-    invoice_number = f"FAC-{str(count + 1).zfill(6)}"
+    folio = str(count + 1).zfill(6)
+    serie = inv_data.serie or "A"
+    invoice_number = f"{serie}-{folio}"
+    
     items = []
     subtotal = 0
     for item in inv_data.items:
         item_total = item.quantity * item.unit_price * (1 - item.discount / 100)
-        items.append({"description": item.description, "quantity": item.quantity,
-                      "unit_price": item.unit_price, "discount": item.discount, "total": round(item_total, 2)})
+        items.append({
+            "description": item.description, "quantity": item.quantity,
+            "unit_price": item.unit_price, "discount": item.discount, "total": round(item_total, 2),
+            "clave_prod_serv": item.clave_prod_serv, "clave_unidad": item.clave_unidad, "unidad": item.unidad
+        })
         subtotal += item_total
     tax_amount = subtotal * (inv_data.tax_rate / 100)
     total = subtotal + tax_amount
+    
     invoice = {
-        "id": generate_id(), "invoice_number": invoice_number, "company_id": inv_data.company_id,
-        "quotation_id": inv_data.quotation_id, "client_name": inv_data.client_name,
-        "client_email": inv_data.client_email, "client_address": inv_data.client_address,
-        "client_tax_id": inv_data.client_tax_id, "items": items, "subtotal": round(subtotal, 2),
+        "id": generate_id(), "invoice_number": invoice_number, "serie": serie, "folio": folio,
+        "company_id": inv_data.company_id, "quotation_id": inv_data.quotation_id,
+        # Client info (receptor)
+        "client_name": inv_data.client_name, "client_email": inv_data.client_email,
+        "client_phone": inv_data.client_phone, "client_address": inv_data.client_address,
+        "client_rfc": inv_data.client_rfc, "client_regimen_fiscal": inv_data.client_regimen_fiscal,
+        "client_codigo_postal": inv_data.client_codigo_postal,
+        # CFDI fields
+        "uso_cfdi": inv_data.uso_cfdi, "metodo_pago": inv_data.metodo_pago,
+        "forma_pago": inv_data.forma_pago, "condiciones_pago": inv_data.condiciones_pago,
+        "moneda": inv_data.moneda, "tipo_cambio": inv_data.tipo_cambio,
+        # Items and totals
+        "items": items, "subtotal": round(subtotal, 2),
         "tax_rate": inv_data.tax_rate, "tax_amount": round(tax_amount, 2), "total": round(total, 2),
-        "notes": inv_data.notes, "status": "Pendiente", "custom_fields": inv_data.custom_fields, "created_at": now_iso()
+        "notes": inv_data.notes, "status": "Pendiente",
+        # Timbrado fields (empty until PAC integration)
+        "uuid_fiscal": None, "fecha_timbrado": None, "sello_sat": None,
+        "sello_cfdi": None, "cadena_original": None,
+        "custom_fields": inv_data.custom_fields, "created_at": now_iso()
     }
     await db.invoices.insert_one(invoice)
     if inv_data.quotation_id:
