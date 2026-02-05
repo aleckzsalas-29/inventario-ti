@@ -10,14 +10,15 @@ import { Textarea } from '../components/ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { 
   Plus, Search, Filter, Download, Monitor, Eye, Edit, Trash2, 
-  MoreVertical, FileText, Wrench, AlertTriangle, Loader2, X
+  MoreVertical, FileText, Wrench, AlertTriangle, Loader2, X,
+  KeyRound, Mail, Cloud, EyeOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
 
 const EQUIPMENT_TYPES = ['Laptop', 'Desktop', 'Monitor', 'Impresora', 'Servidor', 'Switch', 'Router', 'Teléfono', 'Tablet', 'Otro'];
 const ACQUISITION_TYPES = ['Propio', 'Arrendado', 'Prestamo'];
-const STATUS_OPTIONS = ['Disponible', 'Asignado', 'En Reparacion', 'De Baja'];
+const STATUS_OPTIONS = ['Disponible', 'Asignado', 'En Mantenimiento', 'De Baja'];
 
 export default function EquipmentPage() {
   const navigate = useNavigate();
@@ -48,7 +49,21 @@ export default function EquipmentPage() {
     acquisition_date: '',
     provider: '',
     status: 'Disponible',
-    observations: ''
+    observations: '',
+    // Credential fields
+    windows_user: '',
+    windows_password: '',
+    email_account: '',
+    email_password: '',
+    cloud_user: '',
+    cloud_password: ''
+  });
+  
+  // Password visibility toggles
+  const [showPasswords, setShowPasswords] = useState({
+    windows: false,
+    email: false,
+    cloud: false
   });
 
   useEffect(() => {
@@ -127,7 +142,13 @@ export default function EquipmentPage() {
       acquisition_date: eq.acquisition_date || '',
       provider: eq.provider || '',
       status: eq.status,
-      observations: eq.observations || ''
+      observations: eq.observations || '',
+      windows_user: eq.windows_user || '',
+      windows_password: eq.windows_password || '',
+      email_account: eq.email_account || '',
+      email_password: eq.email_password || '',
+      cloud_user: eq.cloud_user || '',
+      cloud_password: eq.cloud_password || ''
     });
     fetchBranches(eq.company_id);
     setDialogOpen(true);
@@ -158,9 +179,16 @@ export default function EquipmentPage() {
       acquisition_date: '',
       provider: '',
       status: 'Disponible',
-      observations: ''
+      observations: '',
+      windows_user: '',
+      windows_password: '',
+      email_account: '',
+      email_password: '',
+      cloud_user: '',
+      cloud_password: ''
     });
     setBranches([]);
+    setShowPasswords({ windows: false, email: false, cloud: false });
   };
 
   const downloadReport = async () => {
@@ -198,7 +226,7 @@ export default function EquipmentPage() {
     const classes = {
       'Disponible': 'status-disponible',
       'Asignado': 'status-asignado',
-      'En Reparacion': 'status-reparacion',
+      'En Mantenimiento': 'status-reparacion',
       'De Baja': 'status-baja'
     };
     return `status-badge ${classes[status] || ''}`;
@@ -386,6 +414,134 @@ export default function EquipmentPage() {
                     placeholder="Notas adicionales sobre el equipo..."
                     rows={3}
                   />
+                </div>
+
+                {/* Credentials Section */}
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                    <KeyRound className="w-4 h-4" />
+                    Credenciales del Equipo
+                  </h3>
+                  
+                  {/* Windows Credentials */}
+                  <div className="p-4 rounded-lg bg-muted/50 mb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Monitor className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium">Windows</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Usuario</Label>
+                        <Input
+                          value={form.windows_user}
+                          onChange={(e) => setForm({...form, windows_user: e.target.value})}
+                          placeholder="Usuario Windows"
+                          data-testid="windows-user-input"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Contraseña</Label>
+                        <div className="relative">
+                          <Input
+                            type={showPasswords.windows ? "text" : "password"}
+                            value={form.windows_password}
+                            onChange={(e) => setForm({...form, windows_password: e.target.value})}
+                            placeholder="••••••••"
+                            data-testid="windows-password-input"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                            onClick={() => setShowPasswords({...showPasswords, windows: !showPasswords.windows})}
+                          >
+                            {showPasswords.windows ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Email Credentials */}
+                  <div className="p-4 rounded-lg bg-muted/50 mb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Mail className="w-4 h-4 text-amber-600" />
+                      <span className="text-sm font-medium">Correo Electrónico</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Cuenta de Correo</Label>
+                        <Input
+                          value={form.email_account}
+                          onChange={(e) => setForm({...form, email_account: e.target.value})}
+                          placeholder="correo@empresa.com"
+                          data-testid="email-account-input"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Contraseña</Label>
+                        <div className="relative">
+                          <Input
+                            type={showPasswords.email ? "text" : "password"}
+                            value={form.email_password}
+                            onChange={(e) => setForm({...form, email_password: e.target.value})}
+                            placeholder="••••••••"
+                            data-testid="email-password-input"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                            onClick={() => setShowPasswords({...showPasswords, email: !showPasswords.email})}
+                          >
+                            {showPasswords.email ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cloud Credentials */}
+                  <div className="p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Cloud className="w-4 h-4 text-emerald-600" />
+                      <span className="text-sm font-medium">Nube / Cloud</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Usuario Cloud</Label>
+                        <Input
+                          value={form.cloud_user}
+                          onChange={(e) => setForm({...form, cloud_user: e.target.value})}
+                          placeholder="Usuario nube"
+                          data-testid="cloud-user-input"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Contraseña</Label>
+                        <div className="relative">
+                          <Input
+                            type={showPasswords.cloud ? "text" : "password"}
+                            value={form.cloud_password}
+                            onChange={(e) => setForm({...form, cloud_password: e.target.value})}
+                            placeholder="••••••••"
+                            data-testid="cloud-password-input"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                            onClick={() => setShowPasswords({...showPasswords, cloud: !showPasswords.cloud})}
+                          >
+                            {showPasswords.cloud ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <DialogFooter>
