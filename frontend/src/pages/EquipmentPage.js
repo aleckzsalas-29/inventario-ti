@@ -723,6 +723,23 @@ export default function EquipmentPage() {
                       </div>
                     </div>
                   </TabsContent>
+
+                  {/* Custom Fields Tab */}
+                  <TabsContent value="custom" className="space-y-4 mt-4">
+                    <CustomFieldsRenderer
+                      entityType="equipment"
+                      values={customFieldValues}
+                      onChange={setCustomFieldValues}
+                      showTitle={false}
+                    />
+                    <div className="p-4 rounded-lg bg-muted/50 text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <SlidersHorizontal className="w-4 h-4" />
+                        <span>Configura campos adicionales en</span>
+                        <a href="/custom-fields" className="text-primary hover:underline">Campos Personalizados</a>
+                      </div>
+                    </div>
+                  </TabsContent>
                 </Tabs>
 
                 <DialogFooter className="mt-6">
