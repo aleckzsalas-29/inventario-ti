@@ -1,28 +1,42 @@
 import { useState, useEffect } from 'react';
-import { maintenanceAPI, equipmentAPI } from '../lib/api';
+import { maintenanceAPI, equipmentAPI, reportsAPI } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Card, CardContent } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { 
-  Plus, Wrench, Loader2, Search, Play, Check, X
+  Plus, Wrench, Loader2, Search, Play, Check, X, Download,
+  ClipboardCheck, AlertTriangle, Settings, Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const MAINTENANCE_TYPES = [
-  { value: 'Preventivo', label: 'Preventivo', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
-  { value: 'Correctivo', label: 'Correctivo', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' },
-  { value: 'Reparacion', label: 'Reparación', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
-  { value: 'Otro', label: 'Otro', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400' }
+  { value: 'Preventivo', label: 'Preventivo', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: ClipboardCheck },
+  { value: 'Correctivo', label: 'Correctivo', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400', icon: Settings },
+  { value: 'Reparacion', label: 'Reparación', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: Wrench },
+  { value: 'Otro', label: 'Otro', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400', icon: AlertTriangle }
 ];
 
 const STATUS_OPTIONS = [
   { value: 'Pendiente', label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
   { value: 'En Proceso', label: 'En Proceso', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
   { value: 'Finalizado', label: 'Finalizado', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' }
+];
+
+const FREQUENCY_OPTIONS = ['Semanal', 'Quincenal', 'Mensual', 'Bimestral', 'Trimestral', 'Semestral', 'Anual'];
+
+const DEFAULT_CHECKLIST = [
+  'Limpieza física del equipo',
+  'Verificación de ventiladores',
+  'Actualización de sistema operativo',
+  'Actualización de antivirus',
+  'Verificación de disco duro',
+  'Respaldo de información',
+  'Verificación de conectividad'
 ];
 
 export default function MaintenancePage() {
@@ -45,10 +59,26 @@ export default function MaintenancePage() {
     maintenance_type: 'Preventivo',
     description: '',
     technician: '',
+    // Preventive fields
+    checklist_items: DEFAULT_CHECKLIST,
+    checklist_results: {},
+    next_maintenance_date: '',
+    maintenance_frequency: '',
+    // Corrective fields
+    problem_diagnosis: '',
+    solution_applied: '',
+    repair_time_hours: '',
+    // Parts
     parts_used: '',
-    next_maintenance_date: ''
+    parts_replaced: []
   });
-  const [completeNotes, setCompleteNotes] = useState('');
+
+  // Complete form
+  const [completeForm, setCompleteForm] = useState({
+    notes: '',
+    solution: '',
+    repair_time: ''
+  });
 
   useEffect(() => {
     fetchData();
@@ -108,16 +138,37 @@ export default function MaintenancePage() {
 
     setSaving(true);
     try {
-      await maintenanceAPI.complete(selectedLog.id, completeNotes || undefined);
+      await maintenanceAPI.complete(
+        selectedLog.id, 
+        completeForm.notes || undefined,
+        completeForm.solution || undefined,
+        completeForm.repair_time ? parseFloat(completeForm.repair_time) : undefined
+      );
       toast.success('Mantenimiento finalizado');
       setCompleteDialogOpen(false);
       setSelectedLog(null);
-      setCompleteNotes('');
+      setCompleteForm({ notes: '', solution: '', repair_time: '' });
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al finalizar mantenimiento');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const downloadMaintenancePdf = async (equipmentId) => {
+    try {
+      const response = await reportsAPI.maintenanceHistoryPdf(equipmentId);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `mantenimientos_equipo.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Reporte descargado');
+    } catch (error) {
+      toast.error('Error al descargar reporte');
     }
   };
 
@@ -127,8 +178,15 @@ export default function MaintenancePage() {
       maintenance_type: 'Preventivo',
       description: '',
       technician: '',
+      checklist_items: DEFAULT_CHECKLIST,
+      checklist_results: {},
+      next_maintenance_date: '',
+      maintenance_frequency: '',
+      problem_diagnosis: '',
+      solution_applied: '',
+      repair_time_hours: '',
       parts_used: '',
-      next_maintenance_date: ''
+      parts_replaced: []
     });
   };
 
@@ -150,6 +208,16 @@ export default function MaintenancePage() {
   const getStatusColor = (status) => {
     const found = STATUS_OPTIONS.find(s => s.value === status);
     return found?.color || 'bg-gray-100 text-gray-800';
+  };
+
+  const handleChecklistChange = (item, checked) => {
+    setForm({
+      ...form,
+      checklist_results: {
+        ...form.checklist_results,
+        [item]: checked
+      }
+    });
   };
 
   if (loading) {
@@ -175,39 +243,41 @@ export default function MaintenancePage() {
               Nuevo Mantenimiento
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Crear Bitácora de Mantenimiento</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Equipo *</Label>
-                <Select value={form.equipment_id} onValueChange={(value) => setForm({...form, equipment_id: value})}>
-                  <SelectTrigger data-testid="maintenance-equipment-select">
-                    <SelectValue placeholder="Seleccionar equipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {equipment.map(eq => (
-                      <SelectItem key={eq.id} value={eq.id}>
-                        {eq.inventory_code} - {eq.equipment_type} ({eq.brand})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Equipo *</Label>
+                  <Select value={form.equipment_id} onValueChange={(value) => setForm({...form, equipment_id: value})}>
+                    <SelectTrigger data-testid="maintenance-equipment-select">
+                      <SelectValue placeholder="Seleccionar equipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {equipment.map(eq => (
+                        <SelectItem key={eq.id} value={eq.id}>
+                          {eq.inventory_code} - {eq.equipment_type} ({eq.brand})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <Label>Tipo de Mantenimiento *</Label>
-                <Select value={form.maintenance_type} onValueChange={(value) => setForm({...form, maintenance_type: value})}>
-                  <SelectTrigger data-testid="maintenance-type-select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MAINTENANCE_TYPES.map(t => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <Label>Tipo de Mantenimiento *</Label>
+                  <Select value={form.maintenance_type} onValueChange={(value) => setForm({...form, maintenance_type: value})}>
+                    <SelectTrigger data-testid="maintenance-type-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MAINTENANCE_TYPES.map(t => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -228,28 +298,121 @@ export default function MaintenancePage() {
                     value={form.technician}
                     onChange={(e) => setForm({...form, technician: e.target.value})}
                     placeholder="Nombre del técnico"
-                    data-testid="maintenance-technician-input"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Próximo Mantenimiento</Label>
+                  <Label>Partes/Materiales</Label>
                   <Input
-                    type="date"
-                    value={form.next_maintenance_date}
-                    onChange={(e) => setForm({...form, next_maintenance_date: e.target.value})}
+                    value={form.parts_used}
+                    onChange={(e) => setForm({...form, parts_used: e.target.value})}
+                    placeholder="Lista de materiales"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Partes/Materiales Utilizados</Label>
-                <Textarea
-                  value={form.parts_used}
-                  onChange={(e) => setForm({...form, parts_used: e.target.value})}
-                  placeholder="Lista de partes o materiales..."
-                  rows={2}
-                />
-              </div>
+              {/* Campos específicos por tipo */}
+              {form.maintenance_type === 'Preventivo' && (
+                <Card className="border-blue-200 dark:border-blue-800">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <ClipboardCheck className="w-4 h-4 text-blue-600" />
+                      Campos de Mantenimiento Preventivo
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Próximo Mantenimiento</Label>
+                        <Input
+                          type="date"
+                          value={form.next_maintenance_date}
+                          onChange={(e) => setForm({...form, next_maintenance_date: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Frecuencia</Label>
+                        <Select value={form.maintenance_frequency} onValueChange={(value) => setForm({...form, maintenance_frequency: value})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FREQUENCY_OPTIONS.map(f => (
+                              <SelectItem key={f} value={f}>{f}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Checklist de Verificación</Label>
+                      <div className="grid grid-cols-2 gap-2 p-3 bg-muted/50 rounded-lg max-h-40 overflow-y-auto">
+                        {form.checklist_items.map((item, idx) => (
+                          <label key={idx} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={form.checklist_results[item] || false}
+                              onChange={(e) => handleChecklistChange(item, e.target.checked)}
+                              className="rounded"
+                            />
+                            <span className="truncate">{item}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {(form.maintenance_type === 'Correctivo' || form.maintenance_type === 'Reparacion') && (
+                <Card className="border-amber-200 dark:border-amber-800">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-amber-600" />
+                      Campos de Mantenimiento {form.maintenance_type}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Diagnóstico del Problema</Label>
+                      <Textarea
+                        value={form.problem_diagnosis}
+                        onChange={(e) => setForm({...form, problem_diagnosis: e.target.value})}
+                        placeholder="Describa el problema encontrado..."
+                        rows={2}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Solución Aplicada</Label>
+                      <Textarea
+                        value={form.solution_applied}
+                        onChange={(e) => setForm({...form, solution_applied: e.target.value})}
+                        placeholder="Describa la solución aplicada..."
+                        rows={2}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Tiempo de Reparación (horas)</Label>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          value={form.repair_time_hours}
+                          onChange={(e) => setForm({...form, repair_time_hours: e.target.value})}
+                          placeholder="0.0"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Piezas Reemplazadas</Label>
+                        <Input
+                          value={form.parts_replaced.join(', ')}
+                          onChange={(e) => setForm({...form, parts_replaced: e.target.value.split(',').map(s => s.trim()).filter(Boolean)})}
+                          placeholder="Pieza 1, Pieza 2..."
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
@@ -331,15 +494,35 @@ export default function MaintenancePage() {
                 <tbody>
                   {filteredLogs.map((log) => (
                     <tr key={log.id} data-testid={`maintenance-row-${log.id}`}>
-                      <td className="font-medium">{log.equipment_code}</td>
+                      <td>
+                        <div>
+                          <p className="font-medium">{log.equipment_code}</p>
+                          <p className="text-xs text-muted-foreground">{log.equipment_type} - {log.equipment_brand}</p>
+                        </div>
+                      </td>
                       <td>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(log.maintenance_type)}`}>
                           {log.maintenance_type}
                         </span>
                       </td>
-                      <td className="max-w-[250px] truncate">{log.description}</td>
+                      <td className="max-w-[200px]">
+                        <p className="truncate">{log.description}</p>
+                        {log.problem_diagnosis && (
+                          <p className="text-xs text-muted-foreground truncate">Dx: {log.problem_diagnosis}</p>
+                        )}
+                      </td>
                       <td>{log.technician || '-'}</td>
-                      <td>{new Date(log.created_at).toLocaleDateString('es')}</td>
+                      <td>
+                        <div>
+                          <p className="text-sm">{new Date(log.created_at).toLocaleDateString('es')}</p>
+                          {log.next_maintenance_date && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              Próx: {log.next_maintenance_date}
+                            </p>
+                          )}
+                        </div>
+                      </td>
                       <td>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(log.status)}`}>
                           {log.status}
@@ -347,6 +530,14 @@ export default function MaintenancePage() {
                       </td>
                       <td className="text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => downloadMaintenancePdf(log.equipment_id)}
+                            title="Descargar historial"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
                           {log.status === 'Pendiente' && (
                             <Button
                               size="sm"
@@ -364,7 +555,7 @@ export default function MaintenancePage() {
                               variant="outline"
                               onClick={() => { 
                                 setSelectedLog(log); 
-                                setCompleteNotes('');
+                                setCompleteForm({ notes: '', solution: '', repair_time: '' });
                                 setCompleteDialogOpen(true); 
                               }}
                               data-testid={`complete-maintenance-btn-${log.id}`}
@@ -397,7 +588,7 @@ export default function MaintenancePage() {
       </Card>
 
       {/* Complete Dialog */}
-      <Dialog open={completeDialogOpen} onOpenChange={(open) => { setCompleteDialogOpen(open); if (!open) { setSelectedLog(null); setCompleteNotes(''); } }}>
+      <Dialog open={completeDialogOpen} onOpenChange={(open) => { setCompleteDialogOpen(open); if (!open) { setSelectedLog(null); setCompleteForm({ notes: '', solution: '', repair_time: '' }); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Finalizar Mantenimiento</DialogTitle>
@@ -414,12 +605,37 @@ export default function MaintenancePage() {
                 </p>
               </div>
             )}
+            
+            {(selectedLog?.maintenance_type === 'Correctivo' || selectedLog?.maintenance_type === 'Reparacion') && (
+              <>
+                <div className="space-y-2">
+                  <Label>Solución Aplicada</Label>
+                  <Textarea
+                    value={completeForm.solution}
+                    onChange={(e) => setCompleteForm({...completeForm, solution: e.target.value})}
+                    placeholder="Describa la solución aplicada..."
+                    rows={2}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tiempo de Reparación (horas)</Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    value={completeForm.repair_time}
+                    onChange={(e) => setCompleteForm({...completeForm, repair_time: e.target.value})}
+                    placeholder="0.0"
+                  />
+                </div>
+              </>
+            )}
+            
             <div className="space-y-2">
-              <Label>Notas de Finalización (opcional)</Label>
+              <Label>Notas de Finalización</Label>
               <Textarea
-                value={completeNotes}
-                onChange={(e) => setCompleteNotes(e.target.value)}
-                placeholder="Observaciones adicionales sobre el trabajo realizado..."
+                value={completeForm.notes}
+                onChange={(e) => setCompleteForm({...completeForm, notes: e.target.value})}
+                placeholder="Observaciones adicionales..."
                 rows={3}
                 data-testid="complete-notes-input"
               />
