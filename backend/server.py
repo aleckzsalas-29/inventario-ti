@@ -1672,6 +1672,80 @@ async def generate_equipment_logs_pdf(equipment_id: str, current_user: dict = De
     return Response(content=bytes(pdf_bytes), media_type="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename=bitacora_{eq.get('inventory_code', 'equipo')}.pdf"})
 
+@api_router.get("/reports/maintenance/{equipment_id}/pdf")
+async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict = Depends(get_current_user)):
+    """Generate PDF report of maintenance history for an equipment"""
+    eq = await db.equipment.find_one({"id": equipment_id}, {"_id": 0})
+    if not eq:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    logs = await db.maintenance_logs.find({"equipment_id": equipment_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, "Historial de Mantenimientos", ln=True, align="C")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 8, f"Equipo: {eq.get('inventory_code', '')} - {eq.get('equipment_type', '')}", ln=True, align="C")
+    pdf.cell(0, 6, f"{eq.get('brand', '')} {eq.get('model', '')} | S/N: {eq.get('serial_number', '')}", ln=True, align="C")
+    pdf.cell(0, 6, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align="C")
+    pdf.ln(10)
+    
+    if not logs:
+        pdf.set_font("Helvetica", "I", 10)
+        pdf.cell(0, 10, "No hay registros de mantenimiento para este equipo", ln=True, align="C")
+    else:
+        for log in logs:
+            pdf.set_font("Helvetica", "B", 10)
+            maint_type = log.get("maintenance_type", "")
+            status = log.get("status", "")
+            date_str = log.get("created_at", "")[:10]
+            pdf.set_fill_color(240, 240, 240)
+            pdf.cell(0, 8, f"{maint_type} - {status} ({date_str})", 1, ln=True, fill=True)
+            
+            pdf.set_font("Helvetica", "", 9)
+            # Description
+            pdf.multi_cell(0, 6, f"Descripcion: {log.get('description', 'N/A')}", border="LR")
+            
+            # Technician
+            if log.get("technician"):
+                pdf.cell(0, 6, f"Tecnico: {log.get('technician')}", border="LR", ln=True)
+            
+            # For preventive maintenance
+            if maint_type == "Preventivo":
+                if log.get("next_maintenance_date"):
+                    pdf.cell(0, 6, f"Proximo mantenimiento: {log.get('next_maintenance_date')}", border="LR", ln=True)
+                if log.get("maintenance_frequency"):
+                    pdf.cell(0, 6, f"Frecuencia: {log.get('maintenance_frequency')}", border="LR", ln=True)
+            
+            # For corrective maintenance
+            if maint_type in ["Correctivo", "Reparacion"]:
+                if log.get("problem_diagnosis"):
+                    pdf.multi_cell(0, 6, f"Diagnostico: {log.get('problem_diagnosis')}", border="LR")
+                if log.get("solution_applied"):
+                    pdf.multi_cell(0, 6, f"Solucion: {log.get('solution_applied')}", border="LR")
+                if log.get("repair_time_hours"):
+                    pdf.cell(0, 6, f"Tiempo de reparacion: {log.get('repair_time_hours')} hrs", border="LR", ln=True)
+            
+            # Parts used
+            if log.get("parts_used"):
+                pdf.multi_cell(0, 6, f"Materiales: {log.get('parts_used')}", border="LR")
+            if log.get("parts_replaced"):
+                parts = ", ".join(log.get("parts_replaced", []))
+                pdf.multi_cell(0, 6, f"Piezas reemplazadas: {parts}", border="LR")
+            
+            # Completion info
+            if log.get("completed_at"):
+                completed = log.get("completed_at", "")[:19].replace("T", " ")
+                pdf.cell(0, 6, f"Completado: {completed}", border="LRB", ln=True)
+            else:
+                pdf.cell(0, 6, "", border="LRB", ln=True)
+            
+            pdf.ln(5)
+    
+    pdf_bytes = pdf.output()
+    return Response(content=bytes(pdf_bytes), media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename=mantenimientos_{eq.get('inventory_code', 'equipo')}.pdf"})
+
 @api_router.get("/quotations/{quotation_id}/pdf")
 async def generate_quotation_pdf(quotation_id: str, current_user: dict = Depends(get_current_user)):
     quot = await db.quotations.find_one({"id": quotation_id}, {"_id": 0})
