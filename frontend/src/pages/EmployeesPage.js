@@ -220,16 +220,6 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>DNI / Identificación *</Label>
-                <Input
-                  value={form.dni}
-                  onChange={(e) => setForm({...form, dni: e.target.value})}
-                  placeholder="12345678"
-                  data-testid="employee-dni-input"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nombres *</Label>
