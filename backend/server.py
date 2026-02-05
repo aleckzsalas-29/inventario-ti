@@ -173,11 +173,26 @@ class EquipmentCreate(BaseModel):
     brand: str
     model: str
     serial_number: str
-    acquisition_type: str
-    acquisition_date: Optional[str] = None
-    provider: Optional[str] = None
     status: str = "Disponible"
     observations: Optional[str] = None
+    # Hardware specifications
+    processor_brand: Optional[str] = None
+    processor_model: Optional[str] = None
+    processor_speed: Optional[str] = None
+    ram_capacity: Optional[str] = None
+    ram_type: Optional[str] = None
+    storage_type: Optional[str] = None
+    storage_capacity: Optional[str] = None
+    # Software
+    os_name: Optional[str] = None
+    os_version: Optional[str] = None
+    os_license: Optional[str] = None
+    antivirus_name: Optional[str] = None
+    antivirus_license: Optional[str] = None
+    antivirus_expiry: Optional[str] = None
+    # Network
+    ip_address: Optional[str] = None
+    mac_address: Optional[str] = None
     # Credential fields
     windows_user: Optional[str] = None
     windows_password: Optional[str] = None
@@ -199,11 +214,27 @@ class EquipmentResponse(BaseModel):
     brand: str
     model: str
     serial_number: str
-    acquisition_type: str
-    acquisition_date: Optional[str] = None
-    provider: Optional[str] = None
     status: str
     observations: Optional[str] = None
+    # Hardware specifications
+    processor_brand: Optional[str] = None
+    processor_model: Optional[str] = None
+    processor_speed: Optional[str] = None
+    ram_capacity: Optional[str] = None
+    ram_type: Optional[str] = None
+    storage_type: Optional[str] = None
+    storage_capacity: Optional[str] = None
+    # Software
+    os_name: Optional[str] = None
+    os_version: Optional[str] = None
+    os_license: Optional[str] = None
+    antivirus_name: Optional[str] = None
+    antivirus_license: Optional[str] = None
+    antivirus_expiry: Optional[str] = None
+    # Network
+    ip_address: Optional[str] = None
+    mac_address: Optional[str] = None
+    # Credentials
     windows_user: Optional[str] = None
     windows_password: Optional[str] = None
     email_account: Optional[str] = None
@@ -258,8 +289,19 @@ class MaintenanceLogCreate(BaseModel):
     maintenance_type: str  # Preventivo, Correctivo, Reparacion, Otro
     description: str
     technician: Optional[str] = None
-    parts_used: Optional[str] = None
+    # Preventive maintenance fields
+    checklist_items: Optional[List[str]] = None
+    checklist_results: Optional[Dict[str, bool]] = None
     next_maintenance_date: Optional[str] = None
+    maintenance_frequency: Optional[str] = None  # Mensual, Trimestral, Semestral, Anual
+    # Corrective maintenance fields
+    problem_diagnosis: Optional[str] = None
+    solution_applied: Optional[str] = None
+    repair_time_hours: Optional[float] = None
+    # Parts/materials
+    parts_used: Optional[str] = None
+    parts_replaced: Optional[List[str]] = None
+    # Custom fields
     custom_fields: Optional[Dict[str, Any]] = None
 
 class MaintenanceLogResponse(BaseModel):
@@ -267,11 +309,23 @@ class MaintenanceLogResponse(BaseModel):
     id: str
     equipment_id: str
     equipment_code: Optional[str] = None
+    equipment_type: Optional[str] = None
+    equipment_brand: Optional[str] = None
     maintenance_type: str
     description: str
     technician: Optional[str] = None
-    parts_used: Optional[str] = None
+    # Preventive fields
+    checklist_items: Optional[List[str]] = None
+    checklist_results: Optional[Dict[str, bool]] = None
     next_maintenance_date: Optional[str] = None
+    maintenance_frequency: Optional[str] = None
+    # Corrective fields
+    problem_diagnosis: Optional[str] = None
+    solution_applied: Optional[str] = None
+    repair_time_hours: Optional[float] = None
+    # Parts
+    parts_used: Optional[str] = None
+    parts_replaced: Optional[List[str]] = None
     custom_fields: Optional[Dict[str, Any]] = None
     status: str  # Pendiente, En Proceso, Finalizado
     created_at: str
@@ -322,21 +376,33 @@ class ExternalServiceResponse(BaseModel):
     is_active: bool = True
     created_at: str
 
-class QuotationItemCreate(BaseModel):
+# CFDI Item for Mexico invoicing
+class CFDIItemCreate(BaseModel):
     description: str
-    quantity: int = 1
+    quantity: float = 1
     unit_price: float
     discount: float = 0.0
+    clave_prod_serv: Optional[str] = None  # SAT product/service key
+    clave_unidad: Optional[str] = None  # SAT unit key (E48=Unidad, H87=Pieza, etc.)
+    unidad: Optional[str] = None  # Unit description
 
 class QuotationCreate(BaseModel):
     company_id: str
+    # Client info
     client_name: str
     client_email: Optional[EmailStr] = None
+    client_phone: Optional[str] = None
     client_address: Optional[str] = None
-    items: List[QuotationItemCreate]
-    tax_rate: float = 0.0
+    client_rfc: Optional[str] = None
+    client_regimen_fiscal: Optional[str] = None
+    # Items and totals
+    items: List[CFDIItemCreate]
+    tax_rate: float = 16.0  # Default IVA Mexico
     notes: Optional[str] = None
+    terms_conditions: Optional[str] = None
     valid_days: int = 30
+    # CFDI fields for conversion to invoice
+    uso_cfdi: Optional[str] = None  # G01, G03, P01, etc.
     custom_fields: Optional[Dict[str, Any]] = None
 
 class QuotationResponse(BaseModel):
@@ -345,29 +411,50 @@ class QuotationResponse(BaseModel):
     quotation_number: str
     company_id: str
     company_name: Optional[str] = None
+    # Client info
     client_name: str
     client_email: Optional[str] = None
+    client_phone: Optional[str] = None
     client_address: Optional[str] = None
+    client_rfc: Optional[str] = None
+    client_regimen_fiscal: Optional[str] = None
+    # Items and totals
     items: List[Dict[str, Any]]
     subtotal: float
     tax_rate: float
     tax_amount: float
     total: float
     notes: Optional[str] = None
+    terms_conditions: Optional[str] = None
     valid_until: str
     status: str
+    uso_cfdi: Optional[str] = None
     custom_fields: Optional[Dict[str, Any]] = None
     created_at: str
 
 class InvoiceCreate(BaseModel):
     company_id: str
     quotation_id: Optional[str] = None
+    # Client info (receptor)
     client_name: str
     client_email: Optional[EmailStr] = None
+    client_phone: Optional[str] = None
     client_address: Optional[str] = None
-    client_tax_id: Optional[str] = None
-    items: List[QuotationItemCreate]
-    tax_rate: float = 0.0
+    client_rfc: str  # Required for CFDI
+    client_regimen_fiscal: Optional[str] = None
+    client_codigo_postal: Optional[str] = None
+    # CFDI Mexico fields
+    serie: Optional[str] = None
+    uso_cfdi: str = "G03"  # Default: Gastos en general
+    metodo_pago: str = "PUE"  # PUE=Pago en una sola exhibición, PPD=Pago en parcialidades
+    forma_pago: str = "03"  # 01=Efectivo, 03=Transferencia, 04=Tarjeta crédito, etc.
+    condiciones_pago: Optional[str] = None
+    moneda: str = "MXN"
+    tipo_cambio: Optional[float] = None
+    # Items
+    items: List[CFDIItemCreate]
+    tax_rate: float = 16.0  # IVA default
+    # Additional
     notes: Optional[str] = None
     custom_fields: Optional[Dict[str, Any]] = None
 
@@ -375,13 +462,27 @@ class InvoiceResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     invoice_number: str
+    serie: Optional[str] = None
+    folio: Optional[str] = None
     company_id: str
     company_name: Optional[str] = None
     quotation_id: Optional[str] = None
+    # Client info
     client_name: str
     client_email: Optional[str] = None
+    client_phone: Optional[str] = None
     client_address: Optional[str] = None
-    client_tax_id: Optional[str] = None
+    client_rfc: Optional[str] = None
+    client_regimen_fiscal: Optional[str] = None
+    client_codigo_postal: Optional[str] = None
+    # CFDI fields
+    uso_cfdi: Optional[str] = None
+    metodo_pago: Optional[str] = None
+    forma_pago: Optional[str] = None
+    condiciones_pago: Optional[str] = None
+    moneda: Optional[str] = None
+    tipo_cambio: Optional[float] = None
+    # Items and totals
     items: List[Dict[str, Any]]
     subtotal: float
     tax_rate: float
@@ -389,6 +490,12 @@ class InvoiceResponse(BaseModel):
     total: float
     notes: Optional[str] = None
     status: str
+    # Timbrado (after PAC integration)
+    uuid_fiscal: Optional[str] = None
+    fecha_timbrado: Optional[str] = None
+    sello_sat: Optional[str] = None
+    sello_cfdi: Optional[str] = None
+    cadena_original: Optional[str] = None
     custom_fields: Optional[Dict[str, Any]] = None
     created_at: str
 
