@@ -90,13 +90,35 @@ export default function CustomFieldsPage() {
 
     setSaving(true);
     try {
+      // Build validation object only with non-empty values
+      const validation = {};
+      if (form.field_type === 'text' || form.field_type === 'password') {
+        if (form.validation.min_length) validation.min_length = parseInt(form.validation.min_length);
+        if (form.validation.max_length) validation.max_length = parseInt(form.validation.max_length);
+        if (form.validation.regex_pattern) {
+          validation.regex_pattern = form.validation.regex_pattern;
+          validation.regex_message = form.validation.regex_message || 'Formato inválido';
+        }
+      }
+      if (form.field_type === 'number') {
+        if (form.validation.min_value !== '') validation.min_value = parseFloat(form.validation.min_value);
+        if (form.validation.max_value !== '') validation.max_value = parseFloat(form.validation.max_value);
+      }
+      if (form.field_type === 'date') {
+        if (form.validation.min_date) validation.min_date = form.validation.min_date;
+        if (form.validation.max_date) validation.max_date = form.validation.max_date;
+      }
+
       const payload = {
         entity_type: form.entity_type,
         name: form.name,
         field_type: form.field_type,
         options: form.field_type === 'select' ? form.options.split(',').map(o => o.trim()).filter(Boolean) : null,
         required: form.required,
-        category: form.category || null
+        category: form.category || null,
+        placeholder: form.placeholder || null,
+        help_text: form.help_text || null,
+        validation: Object.keys(validation).length > 0 ? validation : null
       };
 
       if (editingField) {
