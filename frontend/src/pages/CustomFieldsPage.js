@@ -178,13 +178,26 @@ export default function CustomFieldsPage() {
 
   const resetForm = () => {
     setEditingField(null);
+    setShowValidation(false);
     setForm({
       entity_type: '',
       name: '',
       field_type: 'text',
       options: '',
       required: false,
-      category: ''
+      category: '',
+      placeholder: '',
+      help_text: '',
+      validation: {
+        min_length: '',
+        max_length: '',
+        regex_pattern: '',
+        regex_message: '',
+        min_value: '',
+        max_value: '',
+        min_date: '',
+        max_date: ''
+      }
     });
   };
 
