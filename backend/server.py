@@ -1211,6 +1211,26 @@ async def get_maintenance_logs(status: Optional[str] = None, maintenance_type: O
         eq = await db.equipment.find_one({"id": log["equipment_id"]}, {"_id": 0})
         if eq:
             log["equipment_code"] = eq.get("inventory_code")
+            log["equipment_type"] = eq.get("equipment_type")
+            log["equipment_brand"] = eq.get("brand")
+        if log.get("performed_by"):
+            user = await db.users.find_one({"id": log["performed_by"]}, {"_id": 0})
+            log["performed_by_name"] = user["name"] if user else None
+        result.append(MaintenanceLogResponse(**log))
+    return result
+
+@api_router.get("/maintenance/history/{equipment_id}", response_model=List[MaintenanceLogResponse])
+async def get_equipment_maintenance_history(equipment_id: str, current_user: dict = Depends(get_current_user)):
+    """Get full maintenance history for a specific equipment"""
+    eq = await db.equipment.find_one({"id": equipment_id}, {"_id": 0})
+    if not eq:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    logs = await db.maintenance_logs.find({"equipment_id": equipment_id}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    result = []
+    for log in logs:
+        log["equipment_code"] = eq.get("inventory_code")
+        log["equipment_type"] = eq.get("equipment_type")
+        log["equipment_brand"] = eq.get("brand")
         if log.get("performed_by"):
             user = await db.users.find_one({"id": log["performed_by"]}, {"_id": 0})
             log["performed_by_name"] = user["name"] if user else None
@@ -1226,8 +1246,16 @@ async def create_maintenance_log(log_data: MaintenanceLogCreate, current_user: d
     maint_log = {
         "id": generate_id(), "equipment_id": log_data.equipment_id,
         "maintenance_type": log_data.maintenance_type, "description": log_data.description,
-        "technician": log_data.technician, "parts_used": log_data.parts_used,
+        "technician": log_data.technician,
+        # Preventive fields
+        "checklist_items": log_data.checklist_items, "checklist_results": log_data.checklist_results,
         "next_maintenance_date": log_data.next_maintenance_date,
+        "maintenance_frequency": log_data.maintenance_frequency,
+        # Corrective fields
+        "problem_diagnosis": log_data.problem_diagnosis, "solution_applied": log_data.solution_applied,
+        "repair_time_hours": log_data.repair_time_hours,
+        # Parts
+        "parts_used": log_data.parts_used, "parts_replaced": log_data.parts_replaced,
         "custom_fields": log_data.custom_fields, "status": "Pendiente",
         "created_at": now_iso(), "completed_at": None, "performed_by": current_user["id"]
     }
@@ -1240,6 +1268,8 @@ async def create_maintenance_log(log_data: MaintenanceLogCreate, current_user: d
     }
     await db.equipment_logs.insert_one(eq_log)
     maint_log["equipment_code"] = eq.get("inventory_code")
+    maint_log["equipment_type"] = eq.get("equipment_type")
+    maint_log["equipment_brand"] = eq.get("brand")
     maint_log["performed_by_name"] = current_user["name"]
     return MaintenanceLogResponse(**maint_log)
 
@@ -1256,7 +1286,8 @@ async def start_maintenance(log_id: str, current_user: dict = Depends(get_curren
     return {"message": "Mantenimiento iniciado"}
 
 @api_router.put("/maintenance/{log_id}/complete")
-async def complete_maintenance(log_id: str, notes: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+async def complete_maintenance(log_id: str, notes: Optional[str] = None, solution: Optional[str] = None,
+                               repair_time: Optional[float] = None, current_user: dict = Depends(get_current_user)):
     await check_permission(current_user, "maintenance.write")
     log = await db.maintenance_logs.find_one({"id": log_id})
     if not log:
@@ -1266,6 +1297,10 @@ async def complete_maintenance(log_id: str, notes: Optional[str] = None, current
     update_data = {"status": "Finalizado", "completed_at": now_iso()}
     if notes:
         update_data["description"] = log["description"] + f" | Notas: {notes}"
+    if solution:
+        update_data["solution_applied"] = solution
+    if repair_time:
+        update_data["repair_time_hours"] = repair_time
     await db.maintenance_logs.update_one({"id": log_id}, {"$set": update_data})
     await db.equipment.update_one({"id": log["equipment_id"]}, {"$set": {"status": "Disponible"}})
     eq_log = {
