@@ -1685,8 +1685,13 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
     pdf.set_font("Helvetica", "B", 16)
     pdf.cell(0, 10, "Historial de Mantenimientos", ln=True, align="C")
     pdf.set_font("Helvetica", "", 10)
-    pdf.cell(0, 8, f"Equipo: {eq.get('inventory_code', '')} - {eq.get('equipment_type', '')}", ln=True, align="C")
-    pdf.cell(0, 6, f"{eq.get('brand', '')} {eq.get('model', '')} | S/N: {eq.get('serial_number', '')}", ln=True, align="C")
+    inv_code = str(eq.get('inventory_code', ''))[:30]
+    eq_type = str(eq.get('equipment_type', ''))[:20]
+    brand = str(eq.get('brand', ''))[:20]
+    model = str(eq.get('model', ''))[:20]
+    serial = str(eq.get('serial_number', ''))[:30]
+    pdf.cell(0, 8, f"Equipo: {inv_code} - {eq_type}", ln=True, align="C")
+    pdf.cell(0, 6, f"{brand} {model} | S/N: {serial}", ln=True, align="C")
     pdf.cell(0, 6, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align="C")
     pdf.ln(10)
     
@@ -1696,19 +1701,21 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
     else:
         for log in logs:
             pdf.set_font("Helvetica", "B", 10)
-            maint_type = log.get("maintenance_type", "")
-            status = log.get("status", "")
-            date_str = log.get("created_at", "")[:10]
+            maint_type = str(log.get("maintenance_type", ""))[:20]
+            status = str(log.get("status", ""))[:15]
+            date_str = str(log.get("created_at", ""))[:10]
             pdf.set_fill_color(240, 240, 240)
             pdf.cell(0, 8, f"{maint_type} - {status} ({date_str})", 1, ln=True, fill=True)
             
             pdf.set_font("Helvetica", "", 9)
-            # Description
-            pdf.multi_cell(0, 6, f"Descripcion: {log.get('description', 'N/A')}", border="LR")
+            # Description - truncate to avoid overflow
+            desc = str(log.get('description', 'N/A'))[:200]
+            pdf.cell(0, 6, f"Descripcion: {desc}", border="LR", ln=True)
             
             # Technician
-            if log.get("technician"):
-                pdf.cell(0, 6, f"Tecnico: {log.get('technician')}", border="LR", ln=True)
+            tech = log.get("technician")
+            if tech:
+                pdf.cell(0, 6, f"Tecnico: {str(tech)[:50]}", border="LR", ln=True)
             
             # For preventive maintenance
             if maint_type == "Preventivo":
@@ -1719,23 +1726,23 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
             
             # For corrective maintenance
             if maint_type in ["Correctivo", "Reparacion"]:
-                if log.get("problem_diagnosis"):
-                    pdf.multi_cell(0, 6, f"Diagnostico: {log.get('problem_diagnosis')}", border="LR")
-                if log.get("solution_applied"):
-                    pdf.multi_cell(0, 6, f"Solucion: {log.get('solution_applied')}", border="LR")
+                diag = log.get("problem_diagnosis")
+                if diag:
+                    pdf.cell(0, 6, f"Diagnostico: {str(diag)[:150]}", border="LR", ln=True)
+                sol = log.get("solution_applied")
+                if sol:
+                    pdf.cell(0, 6, f"Solucion: {str(sol)[:150]}", border="LR", ln=True)
                 if log.get("repair_time_hours"):
-                    pdf.cell(0, 6, f"Tiempo de reparacion: {log.get('repair_time_hours')} hrs", border="LR", ln=True)
+                    pdf.cell(0, 6, f"Tiempo: {log.get('repair_time_hours')} hrs", border="LR", ln=True)
             
             # Parts used
-            if log.get("parts_used"):
-                pdf.multi_cell(0, 6, f"Materiales: {log.get('parts_used')}", border="LR")
-            if log.get("parts_replaced"):
-                parts = ", ".join(log.get("parts_replaced", []))
-                pdf.multi_cell(0, 6, f"Piezas reemplazadas: {parts}", border="LR")
+            parts = log.get("parts_used")
+            if parts:
+                pdf.cell(0, 6, f"Materiales: {str(parts)[:100]}", border="LR", ln=True)
             
             # Completion info
             if log.get("completed_at"):
-                completed = log.get("completed_at", "")[:19].replace("T", " ")
+                completed = str(log.get("completed_at", ""))[:19].replace("T", " ")
                 pdf.cell(0, 6, f"Completado: {completed}", border="LRB", ln=True)
             else:
                 pdf.cell(0, 6, "", border="LRB", ln=True)
@@ -1744,7 +1751,7 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
     
     pdf_bytes = pdf.output()
     return Response(content=bytes(pdf_bytes), media_type="application/pdf",
-                    headers={"Content-Disposition": f"attachment; filename=mantenimientos_{eq.get('inventory_code', 'equipo')}.pdf"})
+                    headers={"Content-Disposition": f"attachment; filename=mantenimientos_{inv_code}.pdf"})
 
 @api_router.get("/quotations/{quotation_id}/pdf")
 async def generate_quotation_pdf(quotation_id: str, current_user: dict = Depends(get_current_user)):
