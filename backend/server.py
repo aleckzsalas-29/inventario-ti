@@ -972,9 +972,6 @@ async def get_employees(company_id: Optional[str] = None, branch_id: Optional[st
 @api_router.post("/employees", response_model=EmployeeResponse)
 async def create_employee(emp_data: EmployeeCreate, current_user: dict = Depends(get_current_user)):
     await check_permission(current_user, "companies.write")
-    existing = await db.employees.find_one({"dni": emp_data.dni, "company_id": emp_data.company_id})
-    if existing:
-        raise HTTPException(status_code=400, detail="Ya existe un empleado con ese DNI")
     employee = {
         "id": generate_id(), "company_id": emp_data.company_id, "branch_id": emp_data.branch_id,
         "dni": emp_data.dni, "first_name": emp_data.first_name, "last_name": emp_data.last_name,
