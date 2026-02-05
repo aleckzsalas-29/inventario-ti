@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { dashboardAPI } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { 
   Monitor, Users, Building2, Wrench, FileText, Receipt, 
   TrendingUp, Package, AlertCircle, Clock
 } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { toast } from 'sonner';
-
-const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);
@@ -34,30 +30,18 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-32 bg-muted rounded-xl" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-80 bg-muted rounded-xl" />
-          <div className="h-80 bg-muted rounded-xl" />
+          <div className="h-32 bg-muted rounded-xl" />
+          <div className="h-32 bg-muted rounded-xl" />
+          <div className="h-32 bg-muted rounded-xl" />
+          <div className="h-32 bg-muted rounded-xl" />
         </div>
       </div>
     );
   }
 
-  const equipmentStatusData = stats ? [
-    { name: 'Disponible', value: stats.equipment.available, color: '#10b981' },
-    { name: 'Asignado', value: stats.equipment.assigned, color: '#2563eb' },
-    { name: 'En Reparación', value: stats.equipment.in_repair, color: '#f59e0b' },
-    { name: 'De Baja', value: stats.equipment.decommissioned, color: '#ef4444' },
-  ].filter(item => item.value > 0) : [];
-
-  const equipmentByTypeData = stats?.equipment_by_type?.map((item, index) => ({
-    name: item.type,
-    cantidad: item.count,
-    fill: COLORS[index % COLORS.length]
-  })) || [];
+  const equipment = stats?.equipment || {};
+  const recentActivity = stats?.recent_activity || [];
+  const equipmentByType = stats?.equipment_by_type || [];
 
   return (
     <div className="space-y-8" data-testid="dashboard-page">
@@ -74,7 +58,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Equipos</p>
-                <p className="text-3xl font-bold mt-1">{stats?.equipment?.total || 0}</p>
+                <p className="text-3xl font-bold mt-1">{equipment.total || 0}</p>
               </div>
               <div className="kpi-icon bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
                 <Monitor className="w-6 h-6" />
@@ -88,10 +72,24 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Disponibles</p>
-                <p className="text-3xl font-bold mt-1 text-emerald-600">{stats?.equipment?.available || 0}</p>
+                <p className="text-3xl font-bold mt-1 text-emerald-600">{equipment.available || 0}</p>
               </div>
               <div className="kpi-icon bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
                 <Package className="w-6 h-6" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="stat-card" data-testid="kpi-assigned-equipment">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Asignados</p>
+                <p className="text-3xl font-bold mt-1 text-blue-600">{equipment.assigned || 0}</p>
+              </div>
+              <div className="kpi-icon bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                <Users className="w-6 h-6" />
               </div>
             </div>
           </CardContent>
@@ -110,20 +108,6 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-
-        <Card className="stat-card" data-testid="kpi-companies">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Empresas</p>
-                <p className="text-3xl font-bold mt-1">{stats?.companies || 0}</p>
-              </div>
-              <div className="kpi-icon bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
-                <Building2 className="w-6 h-6" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Secondary Stats */}
@@ -131,12 +115,12 @@ export default function DashboardPage() {
         <Card className="stat-card">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="kpi-icon bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                <Users className="w-5 h-5" />
+              <div className="kpi-icon bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+                <Building2 className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Empleados</p>
-                <p className="text-2xl font-bold">{stats?.employees || 0}</p>
+                <p className="text-sm text-muted-foreground">Empresas</p>
+                <p className="text-2xl font-bold">{stats?.companies || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -171,9 +155,9 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Charts */}
+      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Equipment Status Chart */}
+        {/* Equipment Status */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -182,46 +166,28 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {equipmentStatusData.length > 0 ? (
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={equipmentStatusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {equipmentStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+                <span className="text-sm font-medium">Disponibles</span>
+                <span className="text-xl font-bold text-emerald-600">{equipment.available || 0}</span>
               </div>
-            ) : (
-              <div className="h-[280px] flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>No hay datos de equipos</p>
-                </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                <span className="text-sm font-medium">Asignados</span>
+                <span className="text-xl font-bold text-blue-600">{equipment.assigned || 0}</span>
               </div>
-            )}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                <span className="text-sm font-medium">En Reparación</span>
+                <span className="text-xl font-bold text-amber-600">{equipment.in_repair || 0}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
+                <span className="text-sm font-medium">De Baja</span>
+                <span className="text-xl font-bold text-red-600">{equipment.decommissioned || 0}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Equipment by Type Chart */}
+        {/* Equipment by Type */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -230,26 +196,25 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {equipmentByTypeData.length > 0 ? (
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={equipmentByTypeData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={100} fontSize={12} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Bar dataKey="cantidad" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+            {equipmentByType.length > 0 ? (
+              <div className="space-y-3">
+                {equipmentByType.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
+                    <span className="text-sm font-medium">{item.type}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary rounded-full"
+                          style={{ width: `${Math.min((item.count / (equipment.total || 1)) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-bold w-8 text-right">{item.count}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
-              <div className="h-[280px] flex items-center justify-center text-muted-foreground">
+              <div className="h-[200px] flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
                   <Monitor className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>No hay tipos de equipo registrados</p>
@@ -269,36 +234,41 @@ export default function DashboardPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {stats?.recent_activity?.length > 0 ? (
+          {recentActivity.length > 0 ? (
             <div className="space-y-4">
-              {stats.recent_activity.map((log, index) => (
-                <div key={index} className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className={`w-2 h-2 rounded-full mt-2 ${
-                    log.log_type === 'Mantenimiento' ? 'bg-amber-500' :
-                    log.log_type === 'Incidencia' ? 'bg-red-500' :
-                    log.log_type === 'Cambio' ? 'bg-blue-500' : 'bg-emerald-500'
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{log.description}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        Equipo: {log.equipment_code}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(log.created_at).toLocaleString('es')}
-                      </span>
+              {recentActivity.map((log, index) => {
+                const logTypeClass = log.log_type === 'Mantenimiento' ? 'bg-amber-500' :
+                  log.log_type === 'Incidencia' ? 'bg-red-500' :
+                  log.log_type === 'Cambio' ? 'bg-blue-500' : 'bg-emerald-500';
+                
+                const badgeClass = log.log_type === 'Mantenimiento' 
+                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' 
+                  : log.log_type === 'Incidencia' 
+                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                  : log.log_type === 'Cambio'
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400';
+                
+                return (
+                  <div key={index} className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className={`w-2 h-2 rounded-full mt-2 ${logTypeClass}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{log.description}</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          Equipo: {log.equipment_code}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(log.created_at).toLocaleString('es')}
+                        </span>
+                      </div>
                     </div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${badgeClass}`}>
+                      {log.log_type}
+                    </span>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    log.log_type === 'Mantenimiento' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' :
-                    log.log_type === 'Incidencia' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                    log.log_type === 'Cambio' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                    'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
-                  }`}>
-                    {log.log_type}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="py-8 text-center text-muted-foreground">
