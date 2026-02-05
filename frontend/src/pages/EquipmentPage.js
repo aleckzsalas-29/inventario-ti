@@ -134,11 +134,12 @@ export default function EquipmentPage() {
 
     setSaving(true);
     try {
+      const payload = { ...form, custom_fields: customFieldValues };
       if (editingEquipment) {
-        await equipmentAPI.update(editingEquipment.id, form);
+        await equipmentAPI.update(editingEquipment.id, payload);
         toast.success('Equipo actualizado');
       } else {
-        await equipmentAPI.create(form);
+        await equipmentAPI.create(payload);
         toast.success('Equipo registrado');
       }
       setDialogOpen(false);
