@@ -18,6 +18,7 @@ import ExternalServicesPage from "./pages/ExternalServicesPage";
 import QuotationsPage from "./pages/QuotationsPage";
 import InvoicesPage from "./pages/InvoicesPage";
 import UsersPage from "./pages/UsersPage";
+import CustomFieldsPage from "./pages/CustomFieldsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -84,6 +85,7 @@ function AppRoutes() {
         <Route path="quotations" element={<QuotationsPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="users" element={<UsersPage />} />
+        <Route path="custom-fields" element={<CustomFieldsPage />} />
       </Route>
       
       {/* Catch all */}
