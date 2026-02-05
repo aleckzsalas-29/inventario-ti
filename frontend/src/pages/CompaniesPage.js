@@ -262,6 +262,21 @@ export default function CompaniesPage() {
                   />
                 </div>
               </div>
+
+              {/* Custom Fields */}
+              <CustomFieldsRenderer
+                entityType="company"
+                values={companyCustomFields}
+                onChange={setCompanyCustomFields}
+              />
+              <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <SlidersHorizontal className="w-4 h-4" />
+                  <span>Configura campos adicionales en</span>
+                  <a href="/custom-fields" className="text-primary hover:underline">Campos Personalizados</a>
+                </div>
+              </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setCompanyDialogOpen(false)}>
                   Cancelar
