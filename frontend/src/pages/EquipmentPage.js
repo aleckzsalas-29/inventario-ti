@@ -79,6 +79,9 @@ export default function EquipmentPage() {
   // Form state
   const [form, setForm] = useState(initialFormState);
   
+  // Custom fields
+  const [customFieldValues, setCustomFieldValues] = useState({});
+  
   // Password visibility toggles
   const [showPasswords, setShowPasswords] = useState({
     windows: false,
