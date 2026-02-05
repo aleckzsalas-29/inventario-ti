@@ -85,6 +85,16 @@ class RoleResponse(BaseModel):
     is_system: bool = False
 
 # Custom Fields for any entity
+class CustomFieldValidation(BaseModel):
+    min_length: Optional[int] = None  # For text fields
+    max_length: Optional[int] = None  # For text fields
+    regex_pattern: Optional[str] = None  # For text fields (e.g., email, phone)
+    regex_message: Optional[str] = None  # Custom error message for regex
+    min_value: Optional[float] = None  # For number fields
+    max_value: Optional[float] = None  # For number fields
+    min_date: Optional[str] = None  # For date fields (ISO format)
+    max_date: Optional[str] = None  # For date fields (ISO format)
+
 class CustomFieldCreate(BaseModel):
     entity_type: str  # company, branch, employee, equipment, service, quotation, invoice
     name: str
@@ -92,6 +102,9 @@ class CustomFieldCreate(BaseModel):
     options: Optional[List[str]] = None
     required: bool = False
     category: Optional[str] = None
+    validation: Optional[CustomFieldValidation] = None
+    placeholder: Optional[str] = None
+    help_text: Optional[str] = None
 
 class CustomFieldResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -102,6 +115,9 @@ class CustomFieldResponse(BaseModel):
     options: Optional[List[str]] = None
     required: bool = False
     category: Optional[str] = None
+    validation: Optional[Dict[str, Any]] = None
+    placeholder: Optional[str] = None
+    help_text: Optional[str] = None
     is_active: bool = True
 
 class CompanyCreate(BaseModel):
