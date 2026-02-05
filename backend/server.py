@@ -1038,8 +1038,19 @@ async def create_equipment(eq_data: EquipmentCreate, current_user: dict = Depend
         "id": generate_id(), "company_id": eq_data.company_id, "branch_id": eq_data.branch_id,
         "inventory_code": eq_data.inventory_code, "equipment_type": eq_data.equipment_type,
         "brand": eq_data.brand, "model": eq_data.model, "serial_number": eq_data.serial_number,
-        "acquisition_type": eq_data.acquisition_type, "acquisition_date": eq_data.acquisition_date,
-        "provider": eq_data.provider, "status": eq_data.status, "observations": eq_data.observations,
+        "status": eq_data.status, "observations": eq_data.observations,
+        # Hardware specs
+        "processor_brand": eq_data.processor_brand, "processor_model": eq_data.processor_model,
+        "processor_speed": eq_data.processor_speed, "ram_capacity": eq_data.ram_capacity,
+        "ram_type": eq_data.ram_type, "storage_type": eq_data.storage_type,
+        "storage_capacity": eq_data.storage_capacity,
+        # Software
+        "os_name": eq_data.os_name, "os_version": eq_data.os_version, "os_license": eq_data.os_license,
+        "antivirus_name": eq_data.antivirus_name, "antivirus_license": eq_data.antivirus_license,
+        "antivirus_expiry": eq_data.antivirus_expiry,
+        # Network
+        "ip_address": eq_data.ip_address, "mac_address": eq_data.mac_address,
+        # Credentials
         "windows_user": eq_data.windows_user, "windows_password": eq_data.windows_password,
         "email_account": eq_data.email_account, "email_password": eq_data.email_password,
         "cloud_user": eq_data.cloud_user, "cloud_password": eq_data.cloud_password,
