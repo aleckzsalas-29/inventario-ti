@@ -273,7 +273,7 @@ export default function UsersPage() {
                         <SelectValue placeholder="Sin empresa" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Sin empresa</SelectItem>
+                        <SelectItem value="none">Sin empresa</SelectItem>
                         {companies.map(c => (
                           <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}

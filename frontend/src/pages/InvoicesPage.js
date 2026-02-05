@@ -274,10 +274,10 @@ export default function InvoicesPage() {
                 <Input placeholder="Buscar..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
               </div>
             </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select value={filterStatus || "all"} onValueChange={(v) => setFilterStatus(v === "all" ? "" : v)}>
               <SelectTrigger className="w-[150px]"><SelectValue placeholder="Estado" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="Pendiente">Pendiente</SelectItem>
                 <SelectItem value="Pagada">Pagada</SelectItem>
                 <SelectItem value="Anulada">Anulada</SelectItem>
