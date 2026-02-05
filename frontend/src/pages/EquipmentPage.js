@@ -12,10 +12,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { 
   Plus, Search, Download, Monitor, Eye, Edit, Trash2, 
   MoreVertical, Loader2, X, KeyRound, Mail, Cloud, EyeOff,
-  Cpu, HardDrive, Wifi, Shield
+  Cpu, HardDrive, Wifi, Shield, SlidersHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import CustomFieldsRenderer from '../components/CustomFieldsRenderer';
 
 const EQUIPMENT_TYPES = ['Laptop', 'Desktop', 'Monitor', 'Impresora', 'Servidor', 'Switch', 'Router', 'Teléfono', 'Tablet', 'Otro'];
 const STATUS_OPTIONS = ['Disponible', 'Asignado', 'En Mantenimiento', 'De Baja'];
