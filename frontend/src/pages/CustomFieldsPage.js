@@ -140,14 +140,28 @@ export default function CustomFieldsPage() {
 
   const handleEdit = (field) => {
     setEditingField(field);
+    const v = field.validation || {};
     setForm({
       entity_type: field.entity_type,
       name: field.name,
       field_type: field.field_type,
       options: field.options ? field.options.join(', ') : '',
       required: field.required,
-      category: field.category || ''
+      category: field.category || '',
+      placeholder: field.placeholder || '',
+      help_text: field.help_text || '',
+      validation: {
+        min_length: v.min_length?.toString() || '',
+        max_length: v.max_length?.toString() || '',
+        regex_pattern: v.regex_pattern || '',
+        regex_message: v.regex_message || '',
+        min_value: v.min_value?.toString() || '',
+        max_value: v.max_value?.toString() || '',
+        min_date: v.min_date || '',
+        max_date: v.max_date || ''
+      }
     });
+    setShowValidation(!!field.validation && Object.keys(field.validation).length > 0);
     setDialogOpen(true);
   };
 
