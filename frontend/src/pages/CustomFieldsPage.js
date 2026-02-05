@@ -43,8 +43,22 @@ export default function CustomFieldsPage() {
     field_type: 'text',
     options: '',
     required: false,
-    category: ''
+    category: '',
+    placeholder: '',
+    help_text: '',
+    validation: {
+      min_length: '',
+      max_length: '',
+      regex_pattern: '',
+      regex_message: '',
+      min_value: '',
+      max_value: '',
+      min_date: '',
+      max_date: ''
+    }
   });
+
+  const [showValidation, setShowValidation] = useState(false);
 
   useEffect(() => {
     fetchFields();
