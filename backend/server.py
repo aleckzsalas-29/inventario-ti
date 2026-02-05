@@ -28,6 +28,12 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'inventario-ti-secret-key-2024')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
+# PAC Configuration (for CFDI timbrado)
+PAC_PROVIDER = os.environ.get('PAC_PROVIDER', '')  # facturama, finkok, swsapien
+PAC_API_KEY = os.environ.get('PAC_API_KEY', '')
+PAC_API_SECRET = os.environ.get('PAC_API_SECRET', '')
+PAC_SANDBOX = os.environ.get('PAC_SANDBOX', 'true').lower() == 'true'
+
 app = FastAPI(title="Inventario TI API")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer()
