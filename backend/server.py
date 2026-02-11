@@ -1941,6 +1941,150 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
     return Response(content=bytes(pdf_bytes), media_type="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename=mantenimientos_{inv_code}.pdf"})
 
+@api_router.get("/reports/maintenance/pdf")
+async def generate_maintenance_report_pdf(
+    period: str = Query("week", description="day, week, month"),
+    company_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate PDF report of maintenance logs by period (day, week, month)"""
+    now = datetime.now(timezone.utc)
+    if period == "day":
+        start_date = now - timedelta(days=1)
+        period_label = "Último día"
+    elif period == "month":
+        start_date = now - timedelta(days=30)
+        period_label = "Último mes"
+    else:  # week
+        start_date = now - timedelta(days=7)
+        period_label = "Última semana"
+    
+    query = {"created_at": {"$gte": start_date.isoformat()}}
+    if company_id:
+        # Get equipment IDs for this company
+        equipment_list = await db.equipment.find({"company_id": company_id}, {"id": 1}).to_list(1000)
+        eq_ids = [e["id"] for e in equipment_list]
+        query["equipment_id"] = {"$in": eq_ids}
+    
+    logs = await db.maintenance_logs.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    # Get company name if filtered
+    company_name = ""
+    if company_id:
+        company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+        company_name = company.get("name", "") if company else ""
+    
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, "Reporte de Mantenimientos", ln=True, align="C")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, f"Período: {period_label}", ln=True, align="C")
+    if company_name:
+        pdf.cell(0, 6, f"Empresa: {company_name}", ln=True, align="C")
+    pdf.cell(0, 6, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align="C")
+    pdf.cell(0, 6, f"Total de registros: {len(logs)}", ln=True, align="C")
+    pdf.ln(10)
+    
+    if not logs:
+        pdf.set_font("Helvetica", "I", 10)
+        pdf.cell(0, 10, "No hay registros de mantenimiento en este período", ln=True, align="C")
+    else:
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.cell(25, 7, "Fecha", 1)
+        pdf.cell(30, 7, "Equipo", 1)
+        pdf.cell(25, 7, "Tipo", 1)
+        pdf.cell(60, 7, "Descripción", 1)
+        pdf.cell(25, 7, "Técnico", 1)
+        pdf.cell(20, 7, "Estado", 1)
+        pdf.ln()
+        pdf.set_font("Helvetica", "", 7)
+        for log in logs:
+            date_str = str(log.get("created_at", ""))[:10]
+            pdf.cell(25, 6, date_str, 1)
+            pdf.cell(30, 6, str(log.get("equipment_code", ""))[:15], 1)
+            pdf.cell(25, 6, str(log.get("maintenance_type", ""))[:12], 1)
+            pdf.cell(60, 6, str(log.get("description", ""))[:35], 1)
+            pdf.cell(25, 6, str(log.get("technician", ""))[:12], 1)
+            pdf.cell(20, 6, str(log.get("status", ""))[:10], 1)
+            pdf.ln()
+    
+    pdf_bytes = pdf.output()
+    filename = f"mantenimientos_{period}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    return Response(content=bytes(pdf_bytes), media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+@api_router.get("/reports/equipment-status/pdf")
+async def generate_equipment_status_report_pdf(
+    company_id: str = Query(..., description="ID de la empresa"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate PDF report of equipment status by company"""
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+    
+    equipment_list = await db.equipment.find({"company_id": company_id}, {"_id": 0}).to_list(500)
+    
+    # Get employee names for assigned equipment
+    employee_ids = [eq.get("assigned_to") for eq in equipment_list if eq.get("assigned_to")]
+    employees = {}
+    if employee_ids:
+        emp_list = await db.employees.find({"id": {"$in": employee_ids}}, {"_id": 0}).to_list(500)
+        employees = {e["id"]: f"{e.get('first_name', '')} {e.get('last_name', '')}" for e in emp_list}
+    
+    # Count by status
+    status_counts = {}
+    for eq in equipment_list:
+        status = eq.get("status", "Sin estado")
+        status_counts[status] = status_counts.get(status, 0) + 1
+    
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, "Estado de Equipos por Empresa", ln=True, align="C")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, f"Empresa: {company.get('name', '')}", ln=True, align="C")
+    pdf.cell(0, 6, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align="C")
+    pdf.ln(5)
+    
+    # Summary
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, "Resumen por Estado:", ln=True)
+    pdf.set_font("Helvetica", "", 10)
+    for status, count in sorted(status_counts.items()):
+        pdf.cell(0, 6, f"  • {status}: {count} equipo(s)", ln=True)
+    pdf.cell(0, 6, f"  Total: {len(equipment_list)} equipo(s)", ln=True)
+    pdf.ln(8)
+    
+    # Detail table
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, "Detalle de Equipos:", ln=True)
+    pdf.set_font("Helvetica", "B", 8)
+    pdf.cell(25, 7, "Código", 1)
+    pdf.cell(25, 7, "Tipo", 1)
+    pdf.cell(30, 7, "Marca/Modelo", 1)
+    pdf.cell(25, 7, "Serie", 1)
+    pdf.cell(25, 7, "Estado", 1)
+    pdf.cell(55, 7, "Asignado a", 1)
+    pdf.ln()
+    pdf.set_font("Helvetica", "", 7)
+    
+    for eq in equipment_list:
+        assigned_name = employees.get(eq.get("assigned_to", ""), "Sin asignar")
+        pdf.cell(25, 6, str(eq.get("inventory_code", ""))[:12], 1)
+        pdf.cell(25, 6, str(eq.get("equipment_type", ""))[:12], 1)
+        pdf.cell(30, 6, f"{eq.get('brand', '')[:10]} {eq.get('model', '')[:10]}"[:18], 1)
+        pdf.cell(25, 6, str(eq.get("serial_number", ""))[:12], 1)
+        pdf.cell(25, 6, str(eq.get("status", ""))[:12], 1)
+        pdf.cell(55, 6, assigned_name[:30], 1)
+        pdf.ln()
+    
+    pdf_bytes = pdf.output()
+    filename = f"equipos_{company.get('name', 'empresa')[:20]}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    return Response(content=bytes(pdf_bytes), media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
+
 @api_router.get("/quotations/{quotation_id}/pdf")
 async def generate_quotation_pdf(quotation_id: str, current_user: dict = Depends(get_current_user)):
     quot = await db.quotations.find_one({"id": quotation_id}, {"_id": 0})
