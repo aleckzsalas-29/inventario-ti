@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { equipmentAPI, companiesAPI, branchesAPI, reportsAPI } from '../lib/api';
+import { equipmentAPI, companiesAPI, branchesAPI, reportsAPI, employeesAPI } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { 
   Plus, Search, Download, Monitor, Eye, Edit, Trash2, 
   MoreVertical, Loader2, X, KeyRound, Mail, Cloud, EyeOff,
-  Cpu, HardDrive, Wifi, Shield, SlidersHorizontal
+  Cpu, HardDrive, Wifi, Shield, SlidersHorizontal, User
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
