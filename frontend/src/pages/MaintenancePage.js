@@ -139,6 +139,22 @@ export default function MaintenancePage() {
     }
   };
 
+  const downloadPeriodReport = async (period) => {
+    try {
+      const response = await reportsAPI.maintenancePdf({ period });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `mantenimientos_${period}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Reporte descargado');
+    } catch (error) {
+      toast.error('Error al descargar reporte');
+    }
+  };
+
   const resetForm = () => {
     setForm({ equipment_id: '', maintenance_type: 'Preventivo', description: '', technician: '', next_maintenance_date: '', maintenance_frequency: '', problem_diagnosis: '', solution_applied: '', repair_time_hours: '', parts_used: '' });
     setCustomFieldValues({});
