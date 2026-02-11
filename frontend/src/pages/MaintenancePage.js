@@ -310,6 +310,7 @@ export default function MaintenancePage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card>
