@@ -178,10 +178,33 @@ export default function MaintenancePage() {
           <h1 className="page-title">Bitácoras de Mantenimiento</h1>
           <p className="text-muted-foreground">Gestiona los mantenimientos de equipos</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button data-testid="new-maintenance-btn"><Plus className="w-4 h-4 mr-2" />Nuevo Mantenimiento</Button>
-          </DialogTrigger>
+        <div className="flex gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" data-testid="download-maintenance-report-btn">
+                <Download className="w-4 h-4 mr-2" />
+                Reportes
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => downloadPeriodReport('day')}>
+                <Clock className="w-4 h-4 mr-2" />
+                Último día
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => downloadPeriodReport('week')}>
+                <Clock className="w-4 h-4 mr-2" />
+                Última semana
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => downloadPeriodReport('month')}>
+                <Clock className="w-4 h-4 mr-2" />
+                Último mes
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button data-testid="new-maintenance-btn"><Plus className="w-4 h-4 mr-2" />Nuevo Mantenimiento</Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Crear Bitácora de Mantenimiento</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
