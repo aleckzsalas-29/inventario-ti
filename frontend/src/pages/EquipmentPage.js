@@ -33,6 +33,7 @@ const initialFormState = {
   serial_number: '',
   status: 'Disponible',
   observations: '',
+  assigned_to: '',
   // Hardware specs
   processor_brand: '',
   processor_model: '',
