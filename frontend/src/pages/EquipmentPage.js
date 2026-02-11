@@ -228,6 +228,7 @@ export default function EquipmentPage() {
     setForm(initialFormState);
     setCustomFieldValues({});
     setBranches([]);
+    setEmployees([]);
     setShowPasswords({ windows: false, email: false, cloud: false });
   };
 
