@@ -66,6 +66,7 @@ export default function EquipmentPage() {
   const [equipment, setEquipment] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState(null);
@@ -110,6 +111,19 @@ export default function EquipmentPage() {
       toast.error('Error al cargar datos');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEmployees = async (companyId) => {
+    if (!companyId) {
+      setEmployees([]);
+      return;
+    }
+    try {
+      const res = await employeesAPI.getAll({ company_id: companyId });
+      setEmployees(res.data);
+    } catch (error) {
+      console.error('Error loading employees:', error);
     }
   };
 
