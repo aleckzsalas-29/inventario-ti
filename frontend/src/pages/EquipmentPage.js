@@ -203,10 +203,12 @@ export default function EquipmentPage() {
       email_account: eq.email_account || '',
       email_password: eq.email_password || '',
       cloud_user: eq.cloud_user || '',
-      cloud_password: eq.cloud_password || ''
+      cloud_password: eq.cloud_password || '',
+      assigned_to: eq.assigned_to || ''
     });
     setCustomFieldValues(eq.custom_fields || {});
     fetchBranches(eq.company_id);
+    fetchEmployees(eq.company_id);
     setDialogOpen(true);
   };
 
