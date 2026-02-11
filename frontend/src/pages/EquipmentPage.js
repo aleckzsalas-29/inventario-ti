@@ -323,8 +323,9 @@ export default function EquipmentPage() {
                         <Select 
                           value={form.company_id} 
                           onValueChange={(value) => { 
-                            setForm({...form, company_id: value, branch_id: ''}); 
+                            setForm({...form, company_id: value, branch_id: '', assigned_to: ''}); 
                             fetchBranches(value);
+                            fetchEmployees(value);
                           }}
                         >
                           <SelectTrigger data-testid="company-select">
@@ -350,6 +351,27 @@ export default function EquipmentPage() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        Asignar a Empleado
+                      </Label>
+                      <Select value={form.assigned_to || "none"} onValueChange={(value) => setForm({...form, assigned_to: value === "none" ? "" : value})}>
+                        <SelectTrigger data-testid="assigned-to-select">
+                          <SelectValue placeholder="Sin asignar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sin asignar</SelectItem>
+                          {employees.map(emp => (
+                            <SelectItem key={emp.id} value={emp.id}>
+                              {emp.first_name} {emp.last_name} {emp.position ? `(${emp.position})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {!form.company_id && <p className="text-xs text-muted-foreground">Seleccione primero una empresa</p>}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
