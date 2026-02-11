@@ -138,6 +138,8 @@ export const reportsAPI = {
   equipmentPdf: (params) => api.get('/reports/equipment/pdf', { params, responseType: 'blob' }),
   equipmentLogsPdf: (id) => api.get(`/reports/equipment-logs/${id}/pdf`, { responseType: 'blob' }),
   maintenanceHistoryPdf: (id) => api.get(`/reports/maintenance/${id}/pdf`, { responseType: 'blob' }),
+  maintenancePdf: (params) => api.get('/reports/maintenance/pdf', { params, responseType: 'blob' }),
+  equipmentStatusPdf: (companyId) => api.get('/reports/equipment-status/pdf', { params: { company_id: companyId }, responseType: 'blob' }),
 };
 
 export const notificationsAPI = {
