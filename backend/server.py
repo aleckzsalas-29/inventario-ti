@@ -1087,7 +1087,7 @@ async def create_equipment(eq_data: EquipmentCreate, current_user: dict = Depend
         "windows_user": eq_data.windows_user, "windows_password": eq_data.windows_password,
         "email_account": eq_data.email_account, "email_password": eq_data.email_password,
         "cloud_user": eq_data.cloud_user, "cloud_password": eq_data.cloud_password,
-        "custom_fields": eq_data.custom_fields, "assigned_to": None, "created_at": now_iso()
+        "custom_fields": eq_data.custom_fields, "assigned_to": eq_data.assigned_to, "created_at": now_iso()
     }
     await db.equipment.insert_one(equipment)
     company = await db.companies.find_one({"id": eq_data.company_id}, {"_id": 0})
@@ -1095,6 +1095,9 @@ async def create_equipment(eq_data: EquipmentCreate, current_user: dict = Depend
     if eq_data.branch_id:
         branch = await db.branches.find_one({"id": eq_data.branch_id}, {"_id": 0})
         equipment["branch_name"] = branch["name"] if branch else None
+    if eq_data.assigned_to:
+        employee = await db.employees.find_one({"id": eq_data.assigned_to}, {"_id": 0})
+        equipment["assigned_employee_name"] = f"{employee['first_name']} {employee['last_name']}" if employee else None
     return EquipmentResponse(**equipment)
 
 @api_router.put("/equipment/{equipment_id}", response_model=EquipmentResponse)
