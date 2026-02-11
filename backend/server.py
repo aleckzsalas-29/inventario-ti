@@ -223,6 +223,7 @@ class EquipmentCreate(BaseModel):
     cloud_user: Optional[str] = None
     cloud_password: Optional[str] = None
     custom_fields: Optional[Dict[str, Any]] = None
+    assigned_to: Optional[str] = None  # employee_id
 
 class EquipmentResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
