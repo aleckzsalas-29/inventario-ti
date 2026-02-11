@@ -281,6 +281,26 @@ export default function EquipmentPage() {
     );
   }
 
+  const downloadStatusReport = async () => {
+    if (!filterCompany) {
+      toast.error('Seleccione una empresa para generar el reporte');
+      return;
+    }
+    try {
+      const response = await reportsAPI.equipmentStatusPdf(filterCompany);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'estado_equipos.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Reporte generado');
+    } catch (error) {
+      toast.error('Error al generar reporte');
+    }
+  };
+
   return (
     <div className="space-y-6" data-testid="equipment-page">
       {/* Header */}
@@ -290,10 +310,24 @@ export default function EquipmentPage() {
           <p className="text-muted-foreground">Administra el inventario de equipos tecnológicos</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={downloadReport} data-testid="download-report-btn">
-            <Download className="w-4 h-4 mr-2" />
-            Exportar PDF
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" data-testid="download-report-btn">
+                <Download className="w-4 h-4 mr-2" />
+                Reportes
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={downloadReport}>
+                <Download className="w-4 h-4 mr-2" />
+                Lista de Equipos (PDF)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={downloadStatusReport}>
+                <Monitor className="w-4 h-4 mr-2" />
+                Estado por Empresa (PDF)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button data-testid="add-equipment-btn">
