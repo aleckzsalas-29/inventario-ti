@@ -383,7 +383,7 @@ export default function MaintenancePage() {
                       <td><span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(log.maintenance_type)}`}>{log.maintenance_type}</span></td>
                       <td className="max-w-[200px]"><p className="truncate">{log.description}</p></td>
                       <td>{log.technician || '-'}</td>
-                      <td><p className="text-sm">{new Date(log.created_at).toLocaleDateString('es')}</p>{log.next_maintenance_date && <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" />Próx: {log.next_maintenance_date}</p>}</td>
+                      <td><p className="text-sm">{log.performed_date ? new Date(log.performed_date).toLocaleDateString('es') : new Date(log.created_at).toLocaleDateString('es')}</p>{log.next_maintenance_date && <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" />Próx: {log.next_maintenance_date}</p>}</td>
                       <td><span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(log.status)}`}>{log.status}</span></td>
                       <td className="text-right">
                         <div className="flex items-center justify-end gap-2">
