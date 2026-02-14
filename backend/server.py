@@ -340,6 +340,7 @@ class MaintenanceLogResponse(BaseModel):
     maintenance_type: str
     description: str
     technician: Optional[str] = None
+    performed_date: Optional[str] = None
     # Preventive fields
     checklist_items: Optional[List[str]] = None
     checklist_results: Optional[Dict[str, bool]] = None
