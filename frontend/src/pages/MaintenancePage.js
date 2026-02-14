@@ -90,6 +90,7 @@ export default function MaintenancePage() {
         maintenance_type: form.maintenance_type,
         description: form.description,
         technician: form.technician || null,
+        performed_date: form.performed_date || null,
         next_maintenance_date: form.next_maintenance_date || null,
         maintenance_frequency: form.maintenance_frequency || null,
         problem_diagnosis: form.problem_diagnosis || null,
