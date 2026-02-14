@@ -84,7 +84,19 @@ export default function MaintenancePage() {
     }
     setSaving(true);
     try {
-      const payload = { ...form, custom_fields: customFieldValues };
+      const payload = { 
+        equipment_id: form.equipment_id,
+        maintenance_type: form.maintenance_type,
+        description: form.description,
+        technician: form.technician || null,
+        next_maintenance_date: form.next_maintenance_date || null,
+        maintenance_frequency: form.maintenance_frequency || null,
+        problem_diagnosis: form.problem_diagnosis || null,
+        solution_applied: form.solution_applied || null,
+        repair_time_hours: form.repair_time_hours ? parseFloat(form.repair_time_hours) : null,
+        parts_used: form.parts_used || null,
+        custom_fields: Object.keys(customFieldValues).length > 0 ? customFieldValues : null
+      };
       await maintenanceAPI.create(payload);
       toast.success('Bitácora de mantenimiento creada');
       setDialogOpen(false);
