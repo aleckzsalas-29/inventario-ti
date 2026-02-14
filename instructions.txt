@@ -1,0 +1,356 @@
+=============================================================================
+          INSTRUCCIONES DE DESPLIEGUE - SISTEMA DE INVENTARIO TI
+             Servidor Ubuntu 22.04+ con MongoDB, Nginx y Systemd
+=============================================================================
+
+CONTENIDO:
+1. Requisitos Previos
+2. Configuración de MongoDB
+3. Instalación del Backend (FastAPI)
+4. Instalación del Frontend (React)
+5. Configuración de Nginx
+6. Configuración de Systemd
+7. Resolución de Problemas Comunes
+8. Comandos Útiles
+
+=============================================================================
+1. REQUISITOS PREVIOS
+=============================================================================
+
+# Actualizar sistema
+sudo apt update && sudo apt upgrade -y
+
+# Instalar dependencias básicas
+sudo apt install -y curl git build-essential
+
+# Instalar Node.js 18+ (recomendado: NodeSource)
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Verificar versiones
+node --version   # Debe ser >= 18.x
+npm --version
+
+# Instalar Yarn globalmente
+sudo npm install -g yarn
+
+# Instalar Python 3.10+ y pip
+sudo apt install -y python3 python3-pip python3-venv
+
+# Verificar Python
+python3 --version   # Debe ser >= 3.10
+
+=============================================================================
+2. CONFIGURACIÓN DE MONGODB
+=============================================================================
+
+# Importar clave GPG de MongoDB
+curl -fsSL https://pgp.mongodb.com/server-7.0.asc | \
+   sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
+
+# Agregar repositorio (Ubuntu 22.04)
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] \
+https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | \
+sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+
+# Instalar MongoDB
+sudo apt update
+sudo apt install -y mongodb-org
+
+# Iniciar y habilitar MongoDB
+sudo systemctl start mongod
+sudo systemctl enable mongod
+
+# Verificar estado
+sudo systemctl status mongod
+
+# Verificar conexión
+mongosh --eval "db.adminCommand('ping')"
+
+# Crear base de datos y usuario (opcional pero recomendado para producción)
+mongosh << 'EOF'
+use inventario_ti
+db.createUser({
+  user: "inventario_user",
+  pwd: "tu_contraseña_segura",
+  roles: [{ role: "readWrite", db: "inventario_ti" }]
+})
+EOF
+
+=============================================================================
+3. INSTALACIÓN DEL BACKEND (FastAPI)
+=============================================================================
+
+# Navegar a la carpeta del proyecto
+cd /ruta/a/tu/proyecto
+
+# Crear entorno virtual Python
+python3 -m venv backend/venv
+
+# Activar entorno virtual
+source backend/venv/bin/activate
+
+# Instalar dependencias
+pip install --upgrade pip
+pip install -r backend/requirements.txt
+
+# Si usas emergentintegrations (para futuras integraciones LLM)
+pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
+
+# Crear archivo .env para el backend
+cat > backend/.env << 'EOF'
+MONGO_URL="mongodb://localhost:27017"
+DB_NAME="inventario_ti"
+JWT_SECRET="tu_clave_secreta_muy_larga_y_segura"
+CORS_ORIGINS="https://tu-dominio.com,http://localhost:3000"
+EOF
+
+# Si usas autenticación MongoDB:
+# MONGO_URL="mongodb://inventario_user:tu_contraseña@localhost:27017/inventario_ti?authSource=inventario_ti"
+
+# Probar ejecución manual
+cd backend
+uvicorn server:app --host 0.0.0.0 --port 8001
+# Ctrl+C para detener
+
+=============================================================================
+4. INSTALACIÓN DEL FRONTEND (React)
+=============================================================================
+
+# Navegar a la carpeta frontend
+cd /ruta/a/tu/proyecto/frontend
+
+# Instalar dependencias con Yarn (NO usar npm)
+yarn install
+
+# Crear archivo .env para el frontend
+cat > .env << 'EOF'
+REACT_APP_BACKEND_URL=https://tu-dominio.com
+EOF
+
+# Construir para producción
+yarn build
+
+# La carpeta 'build' contiene los archivos estáticos
+
+=============================================================================
+5. CONFIGURACIÓN DE NGINX
+=============================================================================
+
+# Instalar Nginx
+sudo apt install -y nginx
+
+# Crear configuración del sitio
+sudo nano /etc/nginx/sites-available/inventario-ti
+
+# Contenido del archivo de configuración:
+-----------------------------------------------------------
+server {
+    listen 80;
+    server_name tu-dominio.com www.tu-dominio.com;
+
+    # Redirigir HTTP a HTTPS (descomentar si tienes SSL)
+    # return 301 https://$server_name$request_uri;
+
+    # Frontend (React build)
+    root /ruta/a/tu/proyecto/frontend/build;
+    index index.html;
+
+    # Rutas del frontend
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API Backend - Proxy inverso
+    location /api {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+    }
+}
+-----------------------------------------------------------
+
+# Habilitar el sitio
+sudo ln -s /etc/nginx/sites-available/inventario-ti /etc/nginx/sites-enabled/
+
+# Deshabilitar sitio por defecto (opcional)
+sudo rm /etc/nginx/sites-enabled/default
+
+# Probar configuración
+sudo nginx -t
+
+# Reiniciar Nginx
+sudo systemctl restart nginx
+sudo systemctl enable nginx
+
+# HTTPS con Certbot (recomendado para producción):
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d tu-dominio.com -d www.tu-dominio.com
+
+=============================================================================
+6. CONFIGURACIÓN DE SYSTEMD
+=============================================================================
+
+# IMPORTANTE: Reemplaza 'tu_usuario' con tu nombre de usuario real
+# Verificar tu usuario: whoami
+
+# Crear servicio para el backend
+sudo nano /etc/systemd/system/inventario-backend.service
+
+# Contenido del archivo de servicio:
+-----------------------------------------------------------
+[Unit]
+Description=Inventario TI Backend (FastAPI)
+After=network.target mongod.service
+Requires=mongod.service
+
+[Service]
+User=tu_usuario
+Group=tu_usuario
+WorkingDirectory=/ruta/a/tu/proyecto/backend
+Environment="PATH=/ruta/a/tu/proyecto/backend/venv/bin"
+ExecStart=/ruta/a/tu/proyecto/backend/venv/bin/uvicorn server:app --host 0.0.0.0 --port 8001
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+-----------------------------------------------------------
+
+# Recargar systemd
+sudo systemctl daemon-reload
+
+# Iniciar y habilitar el servicio
+sudo systemctl start inventario-backend
+sudo systemctl enable inventario-backend
+
+# Verificar estado
+sudo systemctl status inventario-backend
+
+# Ver logs del servicio
+sudo journalctl -u inventario-backend -f
+
+=============================================================================
+7. RESOLUCIÓN DE PROBLEMAS COMUNES
+=============================================================================
+
+### ERROR: status=217/USER (servicio no inicia)
+Causa: Usuario incorrecto en el archivo de servicio
+Solución:
+  1. Verifica tu usuario: whoami
+  2. Edita el servicio: sudo nano /etc/systemd/system/inventario-backend.service
+  3. Cambia User=xxx y Group=xxx por tu usuario real
+  4. Recarga: sudo systemctl daemon-reload
+  5. Reinicia: sudo systemctl restart inventario-backend
+
+### ERROR: ModuleNotFoundError
+Causa: Dependencias no instaladas o entorno virtual incorrecto
+Solución:
+  1. Activa el entorno: source /ruta/backend/venv/bin/activate
+  2. Reinstala: pip install -r requirements.txt
+  3. Verifica ruta en el servicio systemd
+
+### ERROR: Connection refused / MongoDB no conecta
+Causa: MongoDB no está corriendo o credenciales incorrectas
+Solución:
+  1. Verifica MongoDB: sudo systemctl status mongod
+  2. Inicia si no está: sudo systemctl start mongod
+  3. Verifica MONGO_URL en backend/.env
+
+### ERROR: 502 Bad Gateway en Nginx
+Causa: Backend no está corriendo
+Solución:
+  1. Verifica backend: sudo systemctl status inventario-backend
+  2. Verifica logs: sudo journalctl -u inventario-backend -n 50
+  3. Reinicia si es necesario: sudo systemctl restart inventario-backend
+
+### ERROR: CORS / Credenciales inválidas
+Causa: URL incorrecta o token expirado
+Solución:
+  1. Verifica REACT_APP_BACKEND_URL en frontend/.env
+  2. Verifica CORS_ORIGINS en backend/.env
+  3. Reconstruye el frontend: yarn build
+  4. Reinicia Nginx: sudo systemctl restart nginx
+
+### ERROR: yarn build falla con "craco: not found"
+Solución:
+  1. Elimina node_modules: rm -rf node_modules
+  2. Limpia cache: yarn cache clean
+  3. Reinstala: yarn install
+  4. Construye: yarn build
+
+### ERROR: git pull - cambios locales
+Solución:
+  1. Guardar cambios: git stash
+  2. Actualizar: git pull origin main
+  3. Recuperar cambios: git stash pop
+  O descartar cambios: git checkout -- .
+
+=============================================================================
+8. COMANDOS ÚTILES
+=============================================================================
+
+# ---- SERVICIOS ----
+sudo systemctl status inventario-backend   # Ver estado
+sudo systemctl start inventario-backend    # Iniciar
+sudo systemctl stop inventario-backend     # Detener
+sudo systemctl restart inventario-backend  # Reiniciar
+sudo systemctl enable inventario-backend   # Auto-iniciar al boot
+
+# ---- LOGS ----
+sudo journalctl -u inventario-backend -f   # Logs en tiempo real
+sudo journalctl -u inventario-backend -n 100  # Últimas 100 líneas
+sudo tail -f /var/log/nginx/error.log      # Logs de Nginx
+
+# ---- NGINX ----
+sudo nginx -t                              # Probar configuración
+sudo systemctl restart nginx               # Reiniciar
+sudo systemctl reload nginx                # Recargar sin downtime
+
+# ---- MONGODB ----
+sudo systemctl status mongod               # Ver estado
+mongosh                                    # Conectar a shell
+mongosh --eval "show dbs"                  # Listar bases de datos
+
+# ---- ACTUALIZAR CÓDIGO ----
+cd /ruta/a/tu/proyecto
+git pull origin main
+source backend/venv/bin/activate
+pip install -r backend/requirements.txt
+cd frontend && yarn install && yarn build
+sudo systemctl restart inventario-backend
+sudo systemctl reload nginx
+
+# ---- CREAR USUARIO ADMIN MANUALMENTE ----
+mongosh inventario_ti << 'EOF'
+db.users.insertOne({
+  id: "admin-" + new ObjectId().toString(),
+  email: "admin@tuempresa.com",
+  password: "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4...", // hash de bcrypt
+  name: "Administrador",
+  role_id: "role-admin",
+  is_active: true,
+  created_at: new Date().toISOString()
+})
+EOF
+
+# Para generar el hash de la contraseña:
+python3 -c "import bcrypt; print(bcrypt.hashpw(b'tu_contraseña', bcrypt.gensalt()).decode())"
+
+=============================================================================
+CREDENCIALES POR DEFECTO (desarrollo)
+=============================================================================
+Email: admin@inventarioti.com
+Password: admin123
+
+NOTA: Cambiar estas credenciales en producción
+
+=============================================================================
+Documento generado automáticamente - Sistema Inventario TI
+=============================================================================
