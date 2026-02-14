@@ -314,6 +314,7 @@ class MaintenanceLogCreate(BaseModel):
     maintenance_type: str  # Preventivo, Correctivo, Reparacion, Otro
     description: str
     technician: Optional[str] = None
+    performed_date: Optional[str] = None  # Fecha en que se realizó
     # Preventive maintenance fields
     checklist_items: Optional[List[str]] = None
     checklist_results: Optional[Dict[str, bool]] = None
