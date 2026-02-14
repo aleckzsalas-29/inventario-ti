@@ -255,9 +255,14 @@ export default function MaintenancePage() {
                   <Input value={form.technician} onChange={(e) => setForm({...form, technician: e.target.value})} placeholder="Nombre del técnico" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Partes/Materiales</Label>
-                  <Input value={form.parts_used} onChange={(e) => setForm({...form, parts_used: e.target.value})} placeholder="Lista de materiales" />
+                  <Label>Fecha de Realización</Label>
+                  <Input type="date" value={form.performed_date} onChange={(e) => setForm({...form, performed_date: e.target.value})} data-testid="maintenance-date-input" />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Partes/Materiales</Label>
+                <Input value={form.parts_used} onChange={(e) => setForm({...form, parts_used: e.target.value})} placeholder="Lista de materiales utilizados" />
               </div>
 
               {form.maintenance_type === 'Preventivo' && (
