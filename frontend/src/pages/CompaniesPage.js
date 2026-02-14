@@ -408,10 +408,29 @@ export default function CompaniesPage() {
           {selectedCompany ? (
             <div className="space-y-6">
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0">
                   <CardTitle>{selectedCompany.name}</CardTitle>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => downloadEquipmentStatusReport(selectedCompany.id)}
+                    data-testid="download-equipment-status-btn"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Reporte Equipos
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {selectedCompany.logo_url && (
+                    <div className="flex justify-center p-4 bg-muted/30 rounded-lg">
+                      <img 
+                        src={selectedCompany.logo_url} 
+                        alt={`Logo de ${selectedCompany.name}`}
+                        className="max-h-20 object-contain"
+                        onError={(e) => e.target.style.display = 'none'}
+                      />
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     {selectedCompany.tax_id && (
                       <div className="flex items-center gap-2">
