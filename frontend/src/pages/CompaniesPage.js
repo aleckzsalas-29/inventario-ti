@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { companiesAPI, branchesAPI } from '../lib/api';
+import { companiesAPI, branchesAPI, reportsAPI } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { 
   Plus, Building2, MapPin, Phone, Mail, Edit, Trash2, 
-  MoreVertical, Loader2, Search, SlidersHorizontal
+  MoreVertical, Loader2, Search, SlidersHorizontal, Download, Image
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { toast } from 'sonner';
