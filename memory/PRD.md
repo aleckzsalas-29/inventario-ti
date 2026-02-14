@@ -11,56 +11,51 @@ Migración de sistema PHP de inventario TI a stack moderno con mejoras de interf
 
 ## Core Requirements
 
-### Completados ✅
+### Completados
 - [x] Gestión de equipos con especificaciones detalladas
 - [x] Campos de hardware: procesador, RAM, almacenamiento, red
 - [x] Campos de software: SO, antivirus con fechas de vencimiento
 - [x] Credenciales de equipos: Windows, correo, nube (ocultas)
 - [x] Bitácoras de mantenimiento con tipos: Preventivo, Correctivo, Reparación, Otro
 - [x] Campos específicos por tipo de mantenimiento
+- [x] **Campo `performed_date`** - Fecha de realización del mantenimiento (14/02/2026)
 - [x] Historial de mantenimientos por equipo con PDF
+- [x] **Reportes PDF por período** - día, semana, mes (14/02/2026)
 - [x] Facturas con formato CFDI México
 - [x] Cotizaciones con RFC y régimen fiscal
-- [x] Asignación de equipos por empresa/empleado
-- [x] Reportes PDF
+- [x] **Asignación de equipos a empleados** con flujo de estados (14/02/2026)
+- [x] **Logo URL en empresas** - aparece en formulario y PDFs (14/02/2026)
+- [x] **Reporte de estado de equipos por empresa** (14/02/2026)
+- [x] Campos Personalizados Dinámicos con validaciones
 - [x] Modo claro/oscuro
-- [x] **Campos Personalizados Dinámicos** (05/02/2026) ✨
-- [x] **Validaciones Personalizadas** (05/02/2026) ✨ NUEVO
-- [x] **Exportación de Campos Personalizados en PDF** (05/02/2026) ✨ NUEVO
+- [x] **Instrucciones de despliegue** - archivo /app/instructions.txt (14/02/2026)
 
 ### Pendientes
 - [ ] Integración con PAC para timbrado CFDI (preparado, pendiente proveedor)
 - [ ] Notificaciones email (requiere API key Resend)
 - [ ] Alertas de renovación de servicios externos
 
-## Implementado (05/02/2026)
+## Implementado (14/02/2026)
 
-### Campos Personalizados con Validaciones
-Sistema completo de campos personalizados dinámicos con validaciones configurables.
+### Bitácoras de Mantenimiento
+- Campo `performed_date` añadido al formulario con valor por defecto (fecha actual)
+- Tabla muestra fecha de realización en lugar de fecha de creación
+- Payload limpia campos vacíos para evitar errores 422
 
-**Secciones soportadas:**
-- Equipos, Empresas, Sucursales, Empleados
-- Servicios Externos, Mantenimientos
-- Cotizaciones, Facturas
+### Reportes PDF
+- Dropdown de reportes en página de Mantenimientos
+- Opciones: Último día, Última semana, Último mes
+- Endpoint: GET /api/reports/maintenance/pdf?period=day|week|month
 
-**Tipos de campo:**
-- Texto, Número, Fecha, Lista de opciones, Sí/No, Contraseña
+### Empresas y Logos
+- Campo `logo_url` en formulario de empresas
+- Preview del logo en el formulario
+- Logo visible en detalles de la empresa
+- Botón "Reporte Equipos" para descargar PDF de estado
 
-**Validaciones disponibles:**
-| Tipo Campo | Validaciones |
-|------------|--------------|
-| Texto/Contraseña | Longitud mín/máx, Patrón Regex, Mensaje de error personalizado |
-| Número | Valor mínimo/máximo |
-| Fecha | Fecha mínima/máxima |
-
-**Campos adicionales del campo:**
-- Placeholder: Texto de ayuda en el input
-- Help text: Instrucciones debajo del campo
-- Categoría: Agrupación visual
-
-**Exportación en PDF:**
-- Reportes de equipos incluyen campos personalizados
-- Historial de mantenimientos incluye campos personalizados
+### Asignación de Equipos
+- Flujo de estados: Disponible → Asignado → Disponible
+- Equipo muestra nombre del empleado asignado
 
 ## Credenciales de Prueba
 - Email: admin@inventarioti.com
@@ -69,50 +64,39 @@ Sistema completo de campos personalizados dinámicos con validaciones configurab
 ## Archivos Clave
 ```
 /app/backend/server.py              # API completa
+/app/instructions.txt               # Instrucciones de despliegue Ubuntu
 /app/frontend/src/pages/
-├── CustomFieldsPage.js             # Gestión con validaciones ✨
-├── EquipmentPage.js                # Formulario con custom fields
-├── CompaniesPage.js                # Empresas + custom fields
+├── CustomFieldsPage.js             # Gestión con validaciones
+├── EquipmentPage.js                # Formulario con custom fields y asignación
+├── CompaniesPage.js                # Empresas con logo y reporte de equipos
 ├── EmployeesPage.js                # Empleados + custom fields
-├── MaintenancePage.js              # Mantenimientos + custom fields
+├── MaintenancePage.js              # Mantenimientos con performed_date y reportes
 ├── ExternalServicesPage.js         # Servicios + custom fields
 └── ...
 /app/frontend/src/components/
-└── CustomFieldsRenderer.js         # Componente con validaciones ✨
+└── CustomFieldsRenderer.js         # Componente con validaciones
 ```
 
 ## API Endpoints
 
-### Campos Personalizados
+### Mantenimientos
 ```
-GET  /api/custom-fields?entity_type=equipment
-POST /api/custom-fields
-PUT  /api/custom-fields/{id}
-DELETE /api/custom-fields/{id}
-```
-
-**Schema CustomField:**
-```json
-{
-  "entity_type": "equipment",
-  "name": "Código SAT",
-  "field_type": "text",
-  "required": true,
-  "placeholder": "ABC-1234",
-  "help_text": "Formato: 3 letras, guión, 4 números",
-  "validation": {
-    "min_length": 8,
-    "max_length": 10,
-    "regex_pattern": "^[A-Z]{3}-[0-9]{4}$",
-    "regex_message": "Debe ser formato ABC-1234"
-  }
-}
+POST /api/maintenance               # Crear bitácora (con performed_date)
+GET  /api/reports/maintenance/pdf?period=day|week|month  # Reporte por período
+GET  /api/reports/maintenance/{equipment_id}/pdf         # Historial de equipo
 ```
 
-### Reportes PDF con Campos Personalizados
+### Empresas
 ```
-GET /api/reports/equipment/pdf?include_custom_fields=true
-GET /api/reports/maintenance/{equipment_id}/pdf
+POST /api/companies                 # Crear empresa (con logo_url)
+PUT  /api/companies/{id}            # Actualizar empresa
+GET  /api/reports/equipment-status/pdf?company_id=xxx    # Reporte de estado
+```
+
+### Asignaciones
+```
+POST /api/assignments               # Crear asignación
+PUT  /api/assignments/{id}/return   # Devolver equipo
 ```
 
 ## Next Steps
@@ -120,12 +104,7 @@ GET /api/reports/maintenance/{equipment_id}/pdf
 2. **P1**: Notificaciones email (configurar Resend)
 3. **P2**: Alertas de renovación de servicios
 
-## Campos Personalizados de Ejemplo
-| Sección | Campo | Validación |
-|---------|-------|------------|
-| Equipos | Número de Activo Fijo | - |
-| Equipos | Código SAT | Regex: ABC-1234 |
-| Empresas | Código SAP | - |
-| Empleados | Número de Empleado | - |
-| Servicios | Contrato Número | - |
-| Mantenimientos | Orden de Trabajo | - |
+## Testing Status
+- Backend: 100% (15/15 tests passed)
+- Frontend: 100% (todas las funcionalidades verificadas)
+- Archivo de tests: /app/backend/tests/test_requested_features.py
