@@ -171,7 +171,7 @@ export default function MaintenancePage() {
   };
 
   const resetForm = () => {
-    setForm({ equipment_id: '', maintenance_type: 'Preventivo', description: '', technician: '', next_maintenance_date: '', maintenance_frequency: '', problem_diagnosis: '', solution_applied: '', repair_time_hours: '', parts_used: '' });
+    setForm({ equipment_id: '', maintenance_type: 'Preventivo', description: '', technician: '', performed_date: new Date().toISOString().split('T')[0], next_maintenance_date: '', maintenance_frequency: '', problem_diagnosis: '', solution_applied: '', repair_time_hours: '', parts_used: '' });
     setCustomFieldValues({});
   };
 
