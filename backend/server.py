@@ -686,7 +686,7 @@ class ModernPDF(FPDF):
         self.set_font("Helvetica", "", 9)
         for key, val in items.items():
             self.set_x(15)
-            self.cell(0, 6, f"• {key}: {val}", ln=True)
+            self.cell(0, 6, f"- {key}: {val}", ln=True)
         self.ln(5)
 
 # ==================== INITIALIZATION ====================
