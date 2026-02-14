@@ -280,6 +280,29 @@ export default function CompaniesPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Image className="w-4 h-4" />
+                  URL del Logo (opcional)
+                </Label>
+                <Input
+                  value={companyForm.logo_url}
+                  onChange={(e) => setCompanyForm({...companyForm, logo_url: e.target.value})}
+                  placeholder="https://ejemplo.com/logo.png"
+                />
+                <p className="text-xs text-muted-foreground">El logo aparecerá en los reportes PDF generados</p>
+                {companyForm.logo_url && (
+                  <div className="p-2 border rounded-md bg-muted/30">
+                    <img 
+                      src={companyForm.logo_url} 
+                      alt="Preview del logo" 
+                      className="max-h-16 object-contain"
+                      onError={(e) => e.target.style.display = 'none'}
+                    />
+                  </div>
+                )}
+              </div>
+
               {/* Custom Fields */}
               <CustomFieldsRenderer
                 entityType="company"
