@@ -44,6 +44,7 @@ export default function MaintenancePage() {
     maintenance_type: 'Preventivo',
     description: '',
     technician: '',
+    performed_date: new Date().toISOString().split('T')[0], // Fecha de realización
     next_maintenance_date: '',
     maintenance_frequency: '',
     problem_diagnosis: '',
