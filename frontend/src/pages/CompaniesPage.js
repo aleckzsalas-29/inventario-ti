@@ -103,7 +103,8 @@ export default function CompaniesPage() {
       address: company.address || '',
       phone: company.phone || '',
       email: company.email || '',
-      tax_id: company.tax_id || ''
+      tax_id: company.tax_id || '',
+      logo_url: company.logo_url || ''
     });
     setCompanyCustomFields(company.custom_fields || {});
     setCompanyDialogOpen(true);
