@@ -126,6 +126,7 @@ class CompanyCreate(BaseModel):
     phone: Optional[str] = None
     email: Optional[EmailStr] = None
     tax_id: Optional[str] = None
+    logo_url: Optional[str] = None
     custom_fields: Optional[Dict[str, Any]] = None
 
 class CompanyResponse(BaseModel):
@@ -136,6 +137,7 @@ class CompanyResponse(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     tax_id: Optional[str] = None
+    logo_url: Optional[str] = None
     custom_fields: Optional[Dict[str, Any]] = None
     is_active: bool = True
     created_at: str
