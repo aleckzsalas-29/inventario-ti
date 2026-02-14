@@ -24,7 +24,7 @@ export default function CompaniesPage() {
   // Company Dialog
   const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
-  const [companyForm, setCompanyForm] = useState({ name: '', address: '', phone: '', email: '', tax_id: '' });
+  const [companyForm, setCompanyForm] = useState({ name: '', address: '', phone: '', email: '', tax_id: '', logo_url: '' });
   const [companyCustomFields, setCompanyCustomFields] = useState({});
   const [savingCompany, setSavingCompany] = useState(false);
   
