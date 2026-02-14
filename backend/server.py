@@ -994,7 +994,8 @@ async def create_company(company_data: CompanyCreate, current_user: dict = Depen
     company = {
         "id": generate_id(), "name": company_data.name, "address": company_data.address,
         "phone": company_data.phone, "email": company_data.email, "tax_id": company_data.tax_id,
-        "custom_fields": company_data.custom_fields, "is_active": True, "created_at": now_iso()
+        "logo_url": company_data.logo_url, "custom_fields": company_data.custom_fields, 
+        "is_active": True, "created_at": now_iso()
     }
     await db.companies.insert_one(company)
     return CompanyResponse(**company)
