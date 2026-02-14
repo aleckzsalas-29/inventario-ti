@@ -1287,6 +1287,7 @@ async def create_maintenance_log(log_data: MaintenanceLogCreate, current_user: d
         "id": generate_id(), "equipment_id": log_data.equipment_id,
         "maintenance_type": log_data.maintenance_type, "description": log_data.description,
         "technician": log_data.technician,
+        "performed_date": log_data.performed_date or now_iso()[:10],
         # Preventive fields
         "checklist_items": log_data.checklist_items, "checklist_results": log_data.checklist_results,
         "next_maintenance_date": log_data.next_maintenance_date,
