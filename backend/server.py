@@ -2178,7 +2178,7 @@ async def generate_equipment_status_report_pdf(
     pdf.cell(0, 8, "Resumen por Estado:", ln=True)
     pdf.set_font("Helvetica", "", 10)
     for status, count in sorted(status_counts.items()):
-        pdf.cell(0, 6, f"  • {status}: {count} equipo(s)", ln=True)
+        pdf.cell(0, 6, f"  - {status}: {count} equipo(s)", ln=True)
     pdf.cell(0, 6, f"  Total: {len(equipment_list)} equipo(s)", ln=True)
     pdf.ln(8)
     
