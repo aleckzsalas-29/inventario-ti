@@ -126,8 +126,24 @@ export default function CompaniesPage() {
 
   const resetCompanyForm = () => {
     setEditingCompany(null);
-    setCompanyForm({ name: '', address: '', phone: '', email: '', tax_id: '' });
+    setCompanyForm({ name: '', address: '', phone: '', email: '', tax_id: '', logo_url: '' });
     setCompanyCustomFields({});
+  };
+
+  const downloadEquipmentStatusReport = async (companyId) => {
+    try {
+      const response = await reportsAPI.equipmentStatusPdf(companyId);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'estado_equipos.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Reporte descargado');
+    } catch (error) {
+      toast.error('Error al descargar reporte');
+    }
   };
 
   // Branch handlers
