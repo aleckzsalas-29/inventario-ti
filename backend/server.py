@@ -1976,95 +1976,295 @@ async def generate_equipment_logs_pdf(equipment_id: str, current_user: dict = De
 
 @api_router.get("/reports/maintenance/{equipment_id}/pdf")
 async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict = Depends(get_current_user)):
-    """Generate PDF report of maintenance history for an equipment"""
+    """Generate professional PDF report of maintenance history for an equipment with full details"""
     eq = await db.equipment.find_one({"id": equipment_id}, {"_id": 0})
     logs = await db.maintenance_logs.find({"equipment_id": equipment_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
     
     if not eq and not logs:
         raise HTTPException(status_code=404, detail="Equipo no encontrado")
     
-    # Get custom fields for maintenance
+    # Get company info for logo
+    company = None
+    logo_url = None
+    company_name = ""
+    if eq and eq.get("company_id"):
+        company = await db.companies.find_one({"id": eq["company_id"]}, {"_id": 0})
+        if company:
+            logo_url = company.get("logo_url")
+            company_name = company.get("name", "")
+    
+    # Get assigned employee name
+    assigned_employee = ""
+    if eq and eq.get("assigned_to"):
+        emp = await db.employees.find_one({"id": eq["assigned_to"]}, {"_id": 0})
+        if emp:
+            assigned_employee = f"{emp.get('first_name', '')} {emp.get('last_name', '')}"
+    
+    # Get custom fields
     custom_fields = await db.custom_fields.find({"entity_type": "maintenance", "is_active": {"$ne": False}}, {"_id": 0}).to_list(50)
+    eq_custom_fields = await db.custom_fields.find({"entity_type": "equipment", "is_active": {"$ne": False}}, {"_id": 0}).to_list(50)
     
-    # Use equipment data or defaults from logs
     inv_code = str(eq.get('inventory_code', 'N/A') if eq else logs[0].get('equipment_code', 'N/A'))[:30]
-    eq_type = str(eq.get('equipment_type', '') if eq else logs[0].get('equipment_type', ''))[:20]
-    brand = str(eq.get('brand', '') if eq else logs[0].get('equipment_brand', ''))[:20]
-    model = str(eq.get('model', '') if eq else '')[:20]
-    serial = str(eq.get('serial_number', '') if eq else '')[:30]
     
-    pdf = FPDF()
+    # Create professional PDF
+    pdf = ModernPDF(title="Historial de Mantenimientos", company_name=company_name, logo_url=logo_url)
+    pdf.alias_nb_pages()
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, "Historial de Mantenimientos", ln=True, align="C")
-    pdf.set_font("Helvetica", "", 10)
-    pdf.cell(0, 8, f"Equipo: {inv_code} - {eq_type}", ln=True, align="C")
-    if brand or model:
-        pdf.cell(0, 6, f"{brand} {model}" + (f" | S/N: {serial}" if serial else ""), ln=True, align="C")
-    pdf.cell(0, 6, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align="C")
-    pdf.ln(10)
+    
+    # Equipment Info Section
+    pdf.section_title("INFORMACION DEL EQUIPO")
+    
+    # Basic info in two columns
+    pdf.set_font("Helvetica", "", 9)
+    col_width = 95
+    
+    if eq:
+        # Row 1
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(30, 6, "Codigo:", 0)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.cell(col_width - 30, 6, str(eq.get('inventory_code', 'N/A')), 0)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(30, 6, "Tipo:", 0)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.cell(col_width - 30, 6, str(eq.get('equipment_type', 'N/A')), 0, 1)
+        
+        # Row 2
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(30, 6, "Marca:", 0)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.cell(col_width - 30, 6, str(eq.get('brand', 'N/A')), 0)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(30, 6, "Modelo:", 0)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.cell(col_width - 30, 6, str(eq.get('model', 'N/A')), 0, 1)
+        
+        # Row 3
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(30, 6, "No. Serie:", 0)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.cell(col_width - 30, 6, str(eq.get('serial_number', 'N/A')), 0)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(30, 6, "Estado:", 0)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.cell(col_width - 30, 6, str(eq.get('status', 'N/A')), 0, 1)
+        
+        # Row 4 - Assigned to
+        if assigned_employee:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.cell(30, 6, "Asignado a:", 0)
+            pdf.set_font("Helvetica", "", 9)
+            pdf.cell(col_width - 30, 6, assigned_employee, 0, 1)
+        
+        pdf.ln(3)
+        
+        # Hardware Specifications
+        has_hardware = any([eq.get('processor_brand'), eq.get('ram_capacity'), eq.get('storage_capacity')])
+        if has_hardware:
+            pdf.section_title("ESPECIFICACIONES DE HARDWARE")
+            
+            if eq.get('processor_brand') or eq.get('processor_model'):
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(30, 6, "Procesador:", 0)
+                pdf.set_font("Helvetica", "", 9)
+                proc_info = f"{eq.get('processor_brand', '')} {eq.get('processor_model', '')}".strip()
+                if eq.get('processor_speed'):
+                    proc_info += f" @ {eq.get('processor_speed')}"
+                pdf.cell(0, 6, proc_info or 'N/A', 0, 1)
+            
+            if eq.get('ram_capacity'):
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(30, 6, "RAM:", 0)
+                pdf.set_font("Helvetica", "", 9)
+                ram_info = eq.get('ram_capacity', '')
+                if eq.get('ram_type'):
+                    ram_info += f" ({eq.get('ram_type')})"
+                pdf.cell(0, 6, ram_info, 0, 1)
+            
+            if eq.get('storage_capacity'):
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(30, 6, "Almacenamiento:", 0)
+                pdf.set_font("Helvetica", "", 9)
+                storage_info = eq.get('storage_capacity', '')
+                if eq.get('storage_type'):
+                    storage_info = f"{eq.get('storage_type')} {storage_info}"
+                pdf.cell(0, 6, storage_info, 0, 1)
+            
+            pdf.ln(3)
+        
+        # Software Info
+        has_software = any([eq.get('os_name'), eq.get('antivirus_name')])
+        if has_software:
+            pdf.section_title("SOFTWARE INSTALADO")
+            
+            if eq.get('os_name'):
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(30, 6, "Sist. Operativo:", 0)
+                pdf.set_font("Helvetica", "", 9)
+                os_info = eq.get('os_name', '')
+                if eq.get('os_version'):
+                    os_info += f" {eq.get('os_version')}"
+                pdf.cell(0, 6, os_info, 0, 1)
+                if eq.get('os_license'):
+                    pdf.set_font("Helvetica", "B", 9)
+                    pdf.cell(30, 6, "Licencia SO:", 0)
+                    pdf.set_font("Helvetica", "", 9)
+                    pdf.cell(0, 6, eq.get('os_license', ''), 0, 1)
+            
+            if eq.get('antivirus_name'):
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(30, 6, "Antivirus:", 0)
+                pdf.set_font("Helvetica", "", 9)
+                pdf.cell(0, 6, eq.get('antivirus_name', ''), 0, 1)
+                if eq.get('antivirus_expiry'):
+                    pdf.set_font("Helvetica", "B", 9)
+                    pdf.cell(30, 6, "Vencimiento AV:", 0)
+                    pdf.set_font("Helvetica", "", 9)
+                    pdf.cell(0, 6, eq.get('antivirus_expiry', ''), 0, 1)
+            
+            pdf.ln(3)
+        
+        # Network Info
+        has_network = any([eq.get('ip_address'), eq.get('mac_address')])
+        if has_network:
+            pdf.section_title("CONFIGURACION DE RED")
+            if eq.get('ip_address'):
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(30, 6, "IP:", 0)
+                pdf.set_font("Helvetica", "", 9)
+                pdf.cell(col_width - 30, 6, eq.get('ip_address', ''), 0)
+            if eq.get('mac_address'):
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(30, 6, "MAC:", 0)
+                pdf.set_font("Helvetica", "", 9)
+                pdf.cell(col_width - 30, 6, eq.get('mac_address', ''), 0)
+            pdf.ln(8)
+        
+        # Custom fields for equipment
+        if eq_custom_fields and eq.get("custom_fields"):
+            pdf.section_title("CAMPOS ADICIONALES DEL EQUIPO")
+            cf_values = eq.get("custom_fields", {})
+            for cf in eq_custom_fields:
+                value = cf_values.get(cf.get("name"), "")
+                if value:
+                    pdf.set_font("Helvetica", "B", 9)
+                    pdf.cell(50, 6, f"{cf.get('name')}:", 0)
+                    pdf.set_font("Helvetica", "", 9)
+                    pdf.cell(0, 6, str(value)[:80], 0, 1)
+            pdf.ln(3)
+    
+    # Maintenance History Section
+    pdf.section_title(f"HISTORIAL DE MANTENIMIENTOS ({len(logs)} registros)")
     
     if not logs:
         pdf.set_font("Helvetica", "I", 10)
         pdf.cell(0, 10, "No hay registros de mantenimiento para este equipo", ln=True, align="C")
     else:
-        for log in logs:
-            pdf.set_font("Helvetica", "B", 10)
-            maint_type = str(log.get("maintenance_type", ""))[:20]
-            status = str(log.get("status", ""))[:15]
-            date_str = str(log.get("created_at", ""))[:10]
-            pdf.set_fill_color(240, 240, 240)
-            pdf.cell(0, 8, f"{maint_type} - {status} ({date_str})", 1, ln=True, fill=True)
+        for idx, log in enumerate(logs):
+            # Maintenance entry header with color coding
+            maint_type = str(log.get("maintenance_type", ""))
+            status = str(log.get("status", ""))
+            date_str = str(log.get("performed_date", log.get("created_at", "")))[:10]
             
+            # Color based on type
+            if maint_type == "Preventivo":
+                pdf.set_fill_color(41, 128, 185)  # Blue
+            elif maint_type == "Correctivo":
+                pdf.set_fill_color(243, 156, 18)  # Orange
+            elif maint_type == "Reparacion":
+                pdf.set_fill_color(231, 76, 60)   # Red
+            else:
+                pdf.set_fill_color(149, 165, 166) # Gray
+            
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(0, 8, f"  {idx + 1}. {maint_type} - {status} | Fecha: {date_str}", 0, ln=True, fill=True)
+            pdf.set_text_color(0, 0, 0)
+            
+            # Content box
+            pdf.set_fill_color(250, 250, 250)
+            pdf.set_draw_color(200, 200, 200)
+            
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.cell(25, 6, "Descripcion:", "LT")
             pdf.set_font("Helvetica", "", 9)
-            desc = str(log.get('description', 'N/A'))[:200]
-            pdf.cell(0, 6, f"Descripcion: {desc}", border="LR", ln=True)
+            desc = str(log.get('description', 'N/A'))[:120]
+            pdf.cell(0, 6, desc, "RT", 1)
             
             tech = log.get("technician")
             if tech:
-                pdf.cell(0, 6, f"Tecnico: {str(tech)[:50]}", border="LR", ln=True)
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(25, 6, "Tecnico:", "L")
+                pdf.set_font("Helvetica", "", 9)
+                pdf.cell(0, 6, str(tech)[:50], "R", 1)
             
             if maint_type == "Preventivo":
                 if log.get("next_maintenance_date"):
-                    pdf.cell(0, 6, f"Proximo mantenimiento: {log.get('next_maintenance_date')}", border="LR", ln=True)
-                if log.get("maintenance_frequency"):
-                    pdf.cell(0, 6, f"Frecuencia: {log.get('maintenance_frequency')}", border="LR", ln=True)
+                    pdf.set_font("Helvetica", "B", 9)
+                    pdf.cell(25, 6, "Prox. Mant.:", "L")
+                    pdf.set_font("Helvetica", "", 9)
+                    pdf.cell(70, 6, log.get('next_maintenance_date'), 0)
+                    if log.get("maintenance_frequency"):
+                        pdf.set_font("Helvetica", "B", 9)
+                        pdf.cell(25, 6, "Frecuencia:", 0)
+                        pdf.set_font("Helvetica", "", 9)
+                        pdf.cell(0, 6, log.get('maintenance_frequency'), "R", 1)
+                    else:
+                        pdf.cell(0, 6, "", "R", 1)
             
             if maint_type in ["Correctivo", "Reparacion"]:
                 diag = log.get("problem_diagnosis")
                 if diag:
-                    pdf.cell(0, 6, f"Diagnostico: {str(diag)[:150]}", border="LR", ln=True)
+                    pdf.set_font("Helvetica", "B", 9)
+                    pdf.cell(25, 6, "Diagnostico:", "L")
+                    pdf.set_font("Helvetica", "", 9)
+                    pdf.cell(0, 6, str(diag)[:100], "R", 1)
                 sol = log.get("solution_applied")
                 if sol:
-                    pdf.cell(0, 6, f"Solucion: {str(sol)[:150]}", border="LR", ln=True)
+                    pdf.set_font("Helvetica", "B", 9)
+                    pdf.cell(25, 6, "Solucion:", "L")
+                    pdf.set_font("Helvetica", "", 9)
+                    pdf.cell(0, 6, str(sol)[:100], "R", 1)
                 if log.get("repair_time_hours"):
-                    pdf.cell(0, 6, f"Tiempo: {log.get('repair_time_hours')} hrs", border="LR", ln=True)
+                    pdf.set_font("Helvetica", "B", 9)
+                    pdf.cell(25, 6, "Tiempo:", "L")
+                    pdf.set_font("Helvetica", "", 9)
+                    pdf.cell(0, 6, f"{log.get('repair_time_hours')} horas", "R", 1)
             
             parts = log.get("parts_used")
             if parts:
-                pdf.cell(0, 6, f"Materiales: {str(parts)[:100]}", border="LR", ln=True)
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(25, 6, "Materiales:", "L")
+                pdf.set_font("Helvetica", "", 9)
+                pdf.cell(0, 6, str(parts)[:100], "R", 1)
             
-            # Add custom fields for this maintenance log
+            # Custom fields
             if custom_fields and log.get("custom_fields"):
                 cf_values = log.get("custom_fields", {})
                 for cf in custom_fields:
                     value = cf_values.get(cf.get("name"), "")
                     if value:
+                        pdf.set_font("Helvetica", "B", 8)
+                        pdf.cell(25, 5, f"{cf.get('name')}:", "L")
                         pdf.set_font("Helvetica", "I", 8)
-                        pdf.cell(0, 5, f"  {cf.get('name')}: {str(value)[:80]}", border="LR", ln=True)
-                pdf.set_font("Helvetica", "", 9)
+                        pdf.cell(0, 5, str(value)[:80], "R", 1)
             
+            # Status and completion
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_text_color(100, 100, 100)
             if log.get("completed_at"):
                 completed = str(log.get("completed_at", ""))[:19].replace("T", " ")
-                pdf.cell(0, 6, f"Completado: {completed}", border="LRB", ln=True)
+                pdf.cell(0, 5, f"Completado: {completed}", "LRB", 1)
             else:
-                pdf.cell(0, 6, "", border="LRB", ln=True)
+                pdf.cell(0, 5, f"Registrado: {str(log.get('created_at', ''))[:19].replace('T', ' ')}", "LRB", 1)
+            pdf.set_text_color(0, 0, 0)
             
-            pdf.ln(5)
+            pdf.ln(4)
     
     pdf_bytes = pdf.output()
+    filename = f"mantenimientos_{inv_code}_{datetime.now().strftime('%Y%m%d')}.pdf"
     return Response(content=bytes(pdf_bytes), media_type="application/pdf",
-                    headers={"Content-Disposition": f"attachment; filename=mantenimientos_{inv_code}.pdf"})
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 @api_router.get("/reports/maintenance/pdf")
 async def generate_maintenance_report_pdf(
