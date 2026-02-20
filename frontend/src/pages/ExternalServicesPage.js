@@ -142,6 +142,22 @@ export default function ExternalServicesPage() {
     setCustomFieldValues({});
   };
 
+  const downloadServicesPdf = async () => {
+    try {
+      const response = await reportsAPI.externalServicesPdf(filterCompany || null);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `servicios_externos_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Reporte descargado');
+    } catch (error) {
+      toast.error('Error al descargar reporte');
+    }
+  };
+
   const getServiceIcon = (type) => {
     switch (type) {
       case 'Hosting': return <Globe className="w-5 h-5" />;
