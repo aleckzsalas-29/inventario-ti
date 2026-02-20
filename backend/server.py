@@ -2185,18 +2185,22 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
             pdf.set_fill_color(250, 250, 250)
             pdf.set_draw_color(200, 200, 200)
             
+            # Description - full text with multi_cell
+            desc = str(log.get('description', 'N/A'))
             pdf.set_font("Helvetica", "B", 9)
-            pdf.cell(25, 6, "Descripcion:", "LT")
+            pdf.cell(25, 6, "Descripcion:", "LT", 0)
             pdf.set_font("Helvetica", "", 9)
-            desc = str(log.get('description', 'N/A'))[:120]
-            pdf.cell(0, 6, desc, "RT", 1)
+            x_pos = pdf.get_x()
+            y_pos = pdf.get_y()
+            pdf.multi_cell(165, 5, desc, border="RT", align="L")
+            y_after_desc = pdf.get_y()
             
             tech = log.get("technician")
             if tech:
                 pdf.set_font("Helvetica", "B", 9)
                 pdf.cell(25, 6, "Tecnico:", "L")
                 pdf.set_font("Helvetica", "", 9)
-                pdf.cell(0, 6, str(tech)[:50], "R", 1)
+                pdf.cell(0, 6, str(tech), "R", 1)
             
             if maint_type == "Preventivo":
                 if log.get("next_maintenance_date"):
@@ -2216,15 +2220,16 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
                 diag = log.get("problem_diagnosis")
                 if diag:
                     pdf.set_font("Helvetica", "B", 9)
-                    pdf.cell(25, 6, "Diagnostico:", "L")
+                    pdf.cell(25, 6, "Diagnostico:", "L", 0)
                     pdf.set_font("Helvetica", "", 9)
-                    pdf.cell(0, 6, str(diag)[:100], "R", 1)
+                    x_diag = pdf.get_x()
+                    pdf.multi_cell(165, 5, str(diag), border="R", align="L")
                 sol = log.get("solution_applied")
                 if sol:
                     pdf.set_font("Helvetica", "B", 9)
-                    pdf.cell(25, 6, "Solucion:", "L")
+                    pdf.cell(25, 6, "Solucion:", "L", 0)
                     pdf.set_font("Helvetica", "", 9)
-                    pdf.cell(0, 6, str(sol)[:100], "R", 1)
+                    pdf.multi_cell(165, 5, str(sol), border="R", align="L")
                 if log.get("repair_time_hours"):
                     pdf.set_font("Helvetica", "B", 9)
                     pdf.cell(25, 6, "Tiempo:", "L")
@@ -2234,9 +2239,9 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
             parts = log.get("parts_used")
             if parts:
                 pdf.set_font("Helvetica", "B", 9)
-                pdf.cell(25, 6, "Materiales:", "L")
+                pdf.cell(25, 6, "Materiales:", "L", 0)
                 pdf.set_font("Helvetica", "", 9)
-                pdf.cell(0, 6, str(parts)[:100], "R", 1)
+                pdf.multi_cell(165, 5, str(parts), border="R", align="L")
             
             # Custom fields
             if custom_fields and log.get("custom_fields"):
@@ -2247,7 +2252,7 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
                         pdf.set_font("Helvetica", "B", 8)
                         pdf.cell(25, 5, f"{cf.get('name')}:", "L")
                         pdf.set_font("Helvetica", "I", 8)
-                        pdf.cell(0, 5, str(value)[:80], "R", 1)
+                        pdf.cell(0, 5, str(value), "R", 1)
             
             # Status and completion
             pdf.set_font("Helvetica", "", 8)
@@ -2260,6 +2265,10 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
             pdf.set_text_color(0, 0, 0)
             
             pdf.ln(4)
+            
+            # Page break if needed
+            if pdf.get_y() > 250:
+                pdf.add_page()
     
     pdf_bytes = pdf.output()
     filename = f"mantenimientos_{inv_code}_{datetime.now().strftime('%Y%m%d')}.pdf"
