@@ -2640,6 +2640,222 @@ async def generate_equipment_status_report_pdf(
     return Response(content=bytes(pdf_bytes), media_type="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename={filename}"})
 
+@api_router.get("/reports/external-services/pdf")
+async def generate_external_services_report_pdf(
+    company_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate professional PDF report of external services by company"""
+    # Get company info
+    company = None
+    company_name = ""
+    logo_url = None
+    query = {"is_active": {"$ne": False}}
+    
+    if company_id:
+        company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+        if company:
+            company_name = company.get("name", "")
+            logo_url = company.get("logo_url")
+            query["company_id"] = company_id
+    
+    services = await db.external_services.find(query, {"_id": 0}).sort("renewal_date", 1).to_list(500)
+    
+    # Get all companies for service names
+    company_ids = list(set([s.get("company_id") for s in services if s.get("company_id")]))
+    companies_map = {}
+    if company_ids:
+        comp_list = await db.companies.find({"id": {"$in": company_ids}}, {"_id": 0}).to_list(100)
+        companies_map = {c["id"]: c.get("name", "") for c in comp_list}
+    
+    # Statistics
+    type_stats = {}
+    total_cost_monthly = 0
+    expiring_soon = []
+    today = datetime.now(timezone.utc)
+    
+    for svc in services:
+        svc_type = svc.get("service_type", "Otro")
+        type_stats[svc_type] = type_stats.get(svc_type, 0) + 1
+        
+        # Calculate monthly cost
+        cost = svc.get("cost", 0) or 0
+        freq = svc.get("payment_frequency", "")
+        if freq == "Mensual":
+            total_cost_monthly += cost
+        elif freq == "Trimestral":
+            total_cost_monthly += cost / 3
+        elif freq == "Semestral":
+            total_cost_monthly += cost / 6
+        elif freq == "Anual":
+            total_cost_monthly += cost / 12
+        
+        # Check expiring soon (30 days)
+        if svc.get("renewal_date"):
+            try:
+                renewal = datetime.fromisoformat(svc["renewal_date"].replace("Z", "+00:00"))
+                days_until = (renewal - today).days
+                if 0 <= days_until <= 30:
+                    expiring_soon.append({**svc, "days_until": days_until})
+            except:
+                pass
+    
+    # Create PDF
+    pdf = ModernPDF(
+        title="Reporte de Servicios Externos",
+        company_name=company_name if company_id else "Todas las Empresas",
+        logo_url=logo_url
+    )
+    pdf.alias_nb_pages()
+    pdf.add_page()
+    
+    # Summary Statistics
+    pdf.section_title("RESUMEN ESTADISTICO")
+    
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.cell(63, 8, f"Total Servicios: {len(services)}", 1, 0, "C")
+    pdf.cell(63, 8, f"Costo Mensual Est.: ${total_cost_monthly:,.2f}", 1, 0, "C")
+    pdf.cell(64, 8, f"Por Renovar (30d): {len(expiring_soon)}", 1, 1, "C")
+    pdf.ln(3)
+    
+    # By type
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.cell(0, 6, "Por Tipo de Servicio:", ln=True)
+    pdf.set_font("Helvetica", "", 9)
+    
+    type_colors = {
+        "Hosting": (52, 152, 219),
+        "Servidor Privado": (155, 89, 182),
+        "VPS": (155, 89, 182),
+        "Dominio": (46, 204, 113),
+        "SSL": (241, 196, 15),
+        "Cloud Storage": (26, 188, 156),
+        "CDN": (230, 126, 34),
+        "Backup": (52, 73, 94),
+        "Otro": (149, 165, 166)
+    }
+    
+    col_count = 0
+    for svc_type, count in sorted(type_stats.items()):
+        color = type_colors.get(svc_type, (149, 165, 166))
+        pdf.set_fill_color(*color)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(47, 7, f"{svc_type}: {count}", 1, 0, "C", fill=True)
+        col_count += 1
+        if col_count >= 4:
+            pdf.ln()
+            col_count = 0
+    if col_count > 0:
+        pdf.ln()
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(5)
+    
+    # Expiring Soon Warning
+    if expiring_soon:
+        pdf.section_title(f"SERVICIOS POR RENOVAR ({len(expiring_soon)})")
+        pdf.set_fill_color(255, 243, 205)
+        pdf.set_draw_color(255, 193, 7)
+        
+        for svc in sorted(expiring_soon, key=lambda x: x.get("days_until", 999)):
+            days = svc.get("days_until", 0)
+            pdf.set_font("Helvetica", "B", 9)
+            if days <= 7:
+                pdf.set_fill_color(248, 215, 218)  # Red background
+            else:
+                pdf.set_fill_color(255, 243, 205)  # Yellow background
+            
+            pdf.cell(0, 7, f"  {svc.get('provider', '')} - {svc.get('service_type', '')} | Vence en {days} dias", "LTR", 1, fill=True)
+            pdf.set_font("Helvetica", "", 8)
+            company_n = companies_map.get(svc.get("company_id"), "")
+            pdf.cell(0, 5, f"  Empresa: {company_n} | Renovacion: {svc.get('renewal_date', '')[:10]}", "LBR", 1)
+        pdf.ln(5)
+    
+    # All Services Detail
+    pdf.section_title(f"DETALLE DE SERVICIOS ({len(services)})")
+    
+    if not services:
+        pdf.set_font("Helvetica", "I", 10)
+        pdf.cell(0, 10, "No hay servicios registrados", ln=True, align="C")
+    else:
+        for idx, svc in enumerate(services):
+            svc_type = svc.get("service_type", "Otro")
+            color = type_colors.get(svc_type, (149, 165, 166))
+            
+            # Header
+            pdf.set_fill_color(*color)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.cell(0, 7, f"  {idx + 1}. {svc.get('provider', '')} - {svc_type}", 0, 1, fill=True)
+            pdf.set_text_color(0, 0, 0)
+            
+            # Details
+            page_width = 190
+            label_width = 35
+            text_width = page_width - label_width
+            
+            detail_rows = []
+            
+            # Company
+            comp_name = companies_map.get(svc.get("company_id"), "N/A")
+            detail_rows.append(("Empresa", comp_name))
+            
+            # Description
+            if svc.get("description"):
+                detail_rows.append(("Descripcion", svc.get("description")))
+            
+            # Dates
+            dates_info = f"Inicio: {svc.get('start_date', 'N/A')[:10]}"
+            if svc.get("renewal_date"):
+                dates_info += f" | Renovacion: {svc.get('renewal_date')[:10]}"
+            detail_rows.append(("Fechas", dates_info))
+            
+            # Cost
+            if svc.get("cost"):
+                cost_info = f"${svc.get('cost', 0):,.2f}"
+                if svc.get("payment_frequency"):
+                    cost_info += f" ({svc.get('payment_frequency')})"
+                detail_rows.append(("Costo", cost_info))
+            
+            # Credentials
+            if svc.get("credentials_info"):
+                detail_rows.append(("Credenciales", svc.get("credentials_info")))
+            
+            # Render rows
+            for i, (label, value) in enumerate(detail_rows):
+                if not value:
+                    continue
+                
+                pdf.set_font("Helvetica", "", 8)
+                lines = pdf.multi_cell(text_width, 4, str(value), split_only=True)
+                row_height = max(5, len(lines) * 4)
+                
+                if pdf.get_y() + row_height > 280:
+                    pdf.add_page()
+                
+                start_y = pdf.get_y()
+                
+                pdf.set_font("Helvetica", "B", 8)
+                pdf.cell(label_width, row_height, f"{label}:", "L", 0)
+                
+                pdf.set_font("Helvetica", "", 8)
+                pdf.multi_cell(text_width, 4, str(value), border=0, align="L")
+                end_y = pdf.get_y()
+                
+                pdf.line(10 + page_width, start_y, 10 + page_width, end_y)
+                pdf.set_y(end_y)
+            
+            # Close box
+            pdf.cell(0, 2, "", "LRB", 1)
+            pdf.ln(3)
+            
+            if pdf.get_y() > 250:
+                pdf.add_page()
+    
+    pdf_bytes = pdf.output()
+    filename = f"servicios_externos_{datetime.now().strftime('%Y%m%d')}.pdf"
+    return Response(content=bytes(pdf_bytes), media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
+
 @api_router.get("/quotations/{quotation_id}/pdf")
 async def generate_quotation_pdf(quotation_id: str, current_user: dict = Depends(get_current_user)):
     quot = await db.quotations.find_one({"id": quotation_id}, {"_id": 0})
