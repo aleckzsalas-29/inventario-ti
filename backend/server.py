@@ -2496,57 +2496,65 @@ async def generate_maintenance_report_pdf(
                 pdf.set_font("Helvetica", "", 8)
                 pdf.cell(0, 5, eq.get('status', 'N/A'), "R", 1)
             
-            # Maintenance description - full text
-            desc = str(log.get('description', ''))
-            pdf.set_font("Helvetica", "B", 8)
-            pdf.cell(25, 5, "Descripcion:", "L", 0)
-            pdf.set_font("Helvetica", "", 8)
-            pdf.multi_cell(165, 4, desc, border="R", align="L")
+            # Build maintenance detail rows
+            detail_rows = []
+            detail_rows.append(("Descripcion", log.get('description', '')))
             
-            # Technician
             if log.get("technician"):
-                pdf.set_font("Helvetica", "B", 8)
-                pdf.cell(25, 5, "Tecnico:", "L")
-                pdf.set_font("Helvetica", "", 8)
-                pdf.cell(0, 5, str(log.get('technician', '')), "R", 1)
+                detail_rows.append(("Tecnico", log.get('technician')))
             
-            # Type-specific fields
             if maint_type == "Preventivo":
                 if log.get("next_maintenance_date") or log.get("maintenance_frequency"):
-                    pdf.set_font("Helvetica", "B", 8)
-                    pdf.cell(25, 5, "Prox. Mant.:", "L")
-                    pdf.set_font("Helvetica", "", 8)
                     next_info = log.get('next_maintenance_date', 'N/A')
                     if log.get("maintenance_frequency"):
-                        next_info += f" ({log.get('maintenance_frequency')})"
-                    pdf.cell(0, 5, next_info, "R", 1)
+                        next_info += f" (Frecuencia: {log.get('maintenance_frequency')})"
+                    detail_rows.append(("Prox. Mant.", next_info))
             
             if maint_type in ["Correctivo", "Reparacion"]:
                 if log.get("problem_diagnosis"):
-                    diag = str(log.get('problem_diagnosis', ''))
-                    pdf.set_font("Helvetica", "B", 8)
-                    pdf.cell(25, 5, "Diagnostico:", "L", 0)
-                    pdf.set_font("Helvetica", "", 8)
-                    pdf.multi_cell(165, 4, diag, border="R", align="L")
+                    detail_rows.append(("Diagnostico", log.get('problem_diagnosis')))
                 if log.get("solution_applied"):
-                    sol = str(log.get('solution_applied', ''))
-                    pdf.set_font("Helvetica", "B", 8)
-                    pdf.cell(25, 5, "Solucion:", "L", 0)
-                    pdf.set_font("Helvetica", "", 8)
-                    pdf.multi_cell(165, 4, sol, border="R", align="L")
+                    detail_rows.append(("Solucion", log.get('solution_applied')))
                 if log.get("repair_time_hours"):
-                    pdf.set_font("Helvetica", "B", 8)
-                    pdf.cell(25, 5, "Tiempo:", "L")
-                    pdf.set_font("Helvetica", "", 8)
-                    pdf.cell(0, 5, f"{log.get('repair_time_hours')} horas", "R", 1)
+                    detail_rows.append(("Tiempo", f"{log.get('repair_time_hours')} horas"))
             
-            # Parts used - full text
             if log.get("parts_used"):
-                parts = str(log.get('parts_used', ''))
-                pdf.set_font("Helvetica", "B", 8)
-                pdf.cell(25, 5, "Materiales:", "L", 0)
+                detail_rows.append(("Materiales", log.get('parts_used')))
+            
+            # Render detail rows with proper formatting
+            page_width = 190
+            margin_left = 10
+            label_width = 30
+            text_width = page_width - label_width
+            
+            for i, (label, value) in enumerate(detail_rows):
+                if not value:
+                    continue
+                
+                # Calculate text height for this row
                 pdf.set_font("Helvetica", "", 8)
-                pdf.multi_cell(165, 4, parts, border="R", align="L")
+                lines = pdf.multi_cell(text_width, 4, str(value), split_only=True)
+                row_height = max(5, len(lines) * 4)
+                
+                # Check for page break
+                if pdf.get_y() + row_height > 280:
+                    pdf.add_page()
+                
+                start_y = pdf.get_y()
+                
+                # Draw label
+                pdf.set_font("Helvetica", "B", 8)
+                pdf.cell(label_width, row_height, f"{label}:", "L", 0)
+                
+                # Draw value
+                pdf.set_font("Helvetica", "", 8)
+                x_val = pdf.get_x()
+                pdf.multi_cell(text_width, 4, str(value), border=0, align="L")
+                end_y = pdf.get_y()
+                
+                # Draw right border
+                pdf.line(margin_left + page_width, start_y, margin_left + page_width, end_y)
+                pdf.set_y(end_y)
             
             # Close box
             pdf.cell(0, 2, "", "LRB", 1)
