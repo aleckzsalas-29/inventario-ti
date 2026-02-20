@@ -204,13 +204,18 @@ export default function ExternalServicesPage() {
           <h1 className="page-title">Servicios Externos</h1>
           <p className="text-muted-foreground">Administra servicios contratados como hosting, servidores, dominios, etc.</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button data-testid="add-service-btn">
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Servicio
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={downloadServicesPdf} data-testid="download-services-pdf-btn">
+            <Download className="w-4 h-4 mr-2" />
+            Descargar PDF
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button data-testid="add-service-btn">
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Servicio
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>{editingService ? 'Editar Servicio' : 'Nuevo Servicio'}</DialogTitle>
