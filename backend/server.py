@@ -2456,18 +2456,19 @@ async def generate_maintenance_report_pdf(
                 pdf.set_font("Helvetica", "", 8)
                 pdf.cell(0, 5, eq.get('status', 'N/A'), "R", 1)
             
-            # Maintenance description
+            # Maintenance description - full text
+            desc = str(log.get('description', ''))
             pdf.set_font("Helvetica", "B", 8)
-            pdf.cell(25, 5, "Descripcion:", "L")
+            pdf.cell(25, 5, "Descripcion:", "L", 0)
             pdf.set_font("Helvetica", "", 8)
-            pdf.cell(0, 5, str(log.get('description', ''))[:90], "R", 1)
+            pdf.multi_cell(165, 4, desc, border="R", align="L")
             
             # Technician
             if log.get("technician"):
                 pdf.set_font("Helvetica", "B", 8)
                 pdf.cell(25, 5, "Tecnico:", "L")
                 pdf.set_font("Helvetica", "", 8)
-                pdf.cell(0, 5, str(log.get('technician', ''))[:50], "R", 1)
+                pdf.cell(0, 5, str(log.get('technician', '')), "R", 1)
             
             # Type-specific fields
             if maint_type == "Preventivo":
@@ -2482,27 +2483,30 @@ async def generate_maintenance_report_pdf(
             
             if maint_type in ["Correctivo", "Reparacion"]:
                 if log.get("problem_diagnosis"):
+                    diag = str(log.get('problem_diagnosis', ''))
                     pdf.set_font("Helvetica", "B", 8)
-                    pdf.cell(25, 5, "Diagnostico:", "L")
+                    pdf.cell(25, 5, "Diagnostico:", "L", 0)
                     pdf.set_font("Helvetica", "", 8)
-                    pdf.cell(0, 5, str(log.get('problem_diagnosis', ''))[:80], "R", 1)
+                    pdf.multi_cell(165, 4, diag, border="R", align="L")
                 if log.get("solution_applied"):
+                    sol = str(log.get('solution_applied', ''))
                     pdf.set_font("Helvetica", "B", 8)
-                    pdf.cell(25, 5, "Solucion:", "L")
+                    pdf.cell(25, 5, "Solucion:", "L", 0)
                     pdf.set_font("Helvetica", "", 8)
-                    pdf.cell(0, 5, str(log.get('solution_applied', ''))[:80], "R", 1)
+                    pdf.multi_cell(165, 4, sol, border="R", align="L")
                 if log.get("repair_time_hours"):
                     pdf.set_font("Helvetica", "B", 8)
                     pdf.cell(25, 5, "Tiempo:", "L")
                     pdf.set_font("Helvetica", "", 8)
                     pdf.cell(0, 5, f"{log.get('repair_time_hours')} horas", "R", 1)
             
-            # Parts used
+            # Parts used - full text
             if log.get("parts_used"):
+                parts = str(log.get('parts_used', ''))
                 pdf.set_font("Helvetica", "B", 8)
-                pdf.cell(25, 5, "Materiales:", "L")
+                pdf.cell(25, 5, "Materiales:", "L", 0)
                 pdf.set_font("Helvetica", "", 8)
-                pdf.cell(0, 5, str(log.get('parts_used', ''))[:80], "R", 1)
+                pdf.multi_cell(165, 4, parts, border="R", align="L")
             
             # Close box
             pdf.cell(0, 2, "", "LRB", 1)
