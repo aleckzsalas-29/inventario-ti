@@ -2185,63 +2185,56 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
             pdf.set_fill_color(250, 250, 250)
             pdf.set_draw_color(200, 200, 200)
             
-            # Description - full text with multi_cell
-            desc = str(log.get('description', 'N/A'))
-            pdf.set_font("Helvetica", "B", 9)
-            pdf.cell(25, 6, "Descripcion:", "LT", 0)
-            pdf.set_font("Helvetica", "", 9)
-            x_pos = pdf.get_x()
-            y_pos = pdf.get_y()
-            pdf.multi_cell(165, 5, desc, border="RT", align="L")
-            y_after_desc = pdf.get_y()
-            
-            tech = log.get("technician")
-            if tech:
+            # Helper function for rows with full text
+            def add_row(label, value, is_first=False, is_last=False):
+                if not value:
+                    return
+                border_left = "L"
+                border_right = "R"
+                border_top = "T" if is_first else ""
+                border_bottom = "B" if is_last else ""
+                
                 pdf.set_font("Helvetica", "B", 9)
-                pdf.cell(25, 6, "Tecnico:", "L")
+                start_y = pdf.get_y()
+                pdf.cell(30, 5, f"{label}:", border_left + border_top, 0)
                 pdf.set_font("Helvetica", "", 9)
-                pdf.cell(0, 6, str(tech), "R", 1)
+                
+                # Calculate available width
+                x_start = pdf.get_x()
+                available_width = 190 - 30  # page width minus label
+                
+                # Use multi_cell for long text
+                pdf.multi_cell(available_width, 5, str(value), border=border_right + border_top, align="L")
+                
+                # Draw left border for multi-line content
+                end_y = pdf.get_y()
+                if end_y - start_y > 5:
+                    pdf.line(10, start_y + 5, 10, end_y)
+            
+            # Build all rows
+            rows = []
+            rows.append(("Descripcion", log.get('description', 'N/A')))
+            
+            if log.get("technician"):
+                rows.append(("Tecnico", log.get('technician')))
             
             if maint_type == "Preventivo":
                 if log.get("next_maintenance_date"):
-                    pdf.set_font("Helvetica", "B", 9)
-                    pdf.cell(25, 6, "Prox. Mant.:", "L")
-                    pdf.set_font("Helvetica", "", 9)
-                    pdf.cell(70, 6, log.get('next_maintenance_date'), 0)
+                    next_info = log.get('next_maintenance_date', '')
                     if log.get("maintenance_frequency"):
-                        pdf.set_font("Helvetica", "B", 9)
-                        pdf.cell(25, 6, "Frecuencia:", 0)
-                        pdf.set_font("Helvetica", "", 9)
-                        pdf.cell(0, 6, log.get('maintenance_frequency'), "R", 1)
-                    else:
-                        pdf.cell(0, 6, "", "R", 1)
+                        next_info += f" (Frecuencia: {log.get('maintenance_frequency')})"
+                    rows.append(("Prox. Mant.", next_info))
             
             if maint_type in ["Correctivo", "Reparacion"]:
-                diag = log.get("problem_diagnosis")
-                if diag:
-                    pdf.set_font("Helvetica", "B", 9)
-                    pdf.cell(25, 6, "Diagnostico:", "L", 0)
-                    pdf.set_font("Helvetica", "", 9)
-                    x_diag = pdf.get_x()
-                    pdf.multi_cell(165, 5, str(diag), border="R", align="L")
-                sol = log.get("solution_applied")
-                if sol:
-                    pdf.set_font("Helvetica", "B", 9)
-                    pdf.cell(25, 6, "Solucion:", "L", 0)
-                    pdf.set_font("Helvetica", "", 9)
-                    pdf.multi_cell(165, 5, str(sol), border="R", align="L")
+                if log.get("problem_diagnosis"):
+                    rows.append(("Diagnostico", log.get('problem_diagnosis')))
+                if log.get("solution_applied"):
+                    rows.append(("Solucion", log.get('solution_applied')))
                 if log.get("repair_time_hours"):
-                    pdf.set_font("Helvetica", "B", 9)
-                    pdf.cell(25, 6, "Tiempo:", "L")
-                    pdf.set_font("Helvetica", "", 9)
-                    pdf.cell(0, 6, f"{log.get('repair_time_hours')} horas", "R", 1)
+                    rows.append(("Tiempo", f"{log.get('repair_time_hours')} horas"))
             
-            parts = log.get("parts_used")
-            if parts:
-                pdf.set_font("Helvetica", "B", 9)
-                pdf.cell(25, 6, "Materiales:", "L", 0)
-                pdf.set_font("Helvetica", "", 9)
-                pdf.multi_cell(165, 5, str(parts), border="R", align="L")
+            if log.get("parts_used"):
+                rows.append(("Materiales", log.get('parts_used')))
             
             # Custom fields
             if custom_fields and log.get("custom_fields"):
@@ -2249,19 +2242,66 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
                 for cf in custom_fields:
                     value = cf_values.get(cf.get("name"), "")
                     if value:
-                        pdf.set_font("Helvetica", "B", 8)
-                        pdf.cell(25, 5, f"{cf.get('name')}:", "L")
-                        pdf.set_font("Helvetica", "I", 8)
-                        pdf.cell(0, 5, str(value), "R", 1)
+                        rows.append((cf.get('name'), str(value)))
             
-            # Status and completion
+            # Render all rows with proper borders
+            page_width = 190
+            margin_left = 10
+            
+            for i, (label, value) in enumerate(rows):
+                if not value:
+                    continue
+                    
+                is_first = (i == 0)
+                
+                # Calculate text height
+                pdf.set_font("Helvetica", "", 9)
+                text_width = page_width - 30
+                lines = pdf.multi_cell(text_width, 5, str(value), split_only=True)
+                text_height = len(lines) * 5
+                row_height = max(6, text_height)
+                
+                # Check for page break
+                if pdf.get_y() + row_height > 280:
+                    pdf.add_page()
+                    is_first = True
+                
+                start_y = pdf.get_y()
+                
+                # Draw label
+                pdf.set_font("Helvetica", "B", 9)
+                border_l = "LT" if is_first else "L"
+                pdf.cell(30, row_height, f"{label}:", border_l, 0)
+                
+                # Draw value with multi_cell
+                pdf.set_font("Helvetica", "", 9)
+                x_val = pdf.get_x()
+                y_val = pdf.get_y()
+                
+                # Draw top border if first
+                if is_first:
+                    pdf.line(x_val, y_val, margin_left + page_width, y_val)
+                
+                pdf.multi_cell(text_width, 5, str(value), border=0, align="L")
+                end_y = pdf.get_y()
+                
+                # Draw right border
+                pdf.line(margin_left + page_width, start_y, margin_left + page_width, end_y)
+                
+                # Ensure cursor is at correct position
+                pdf.set_y(end_y)
+            
+            # Draw bottom border and completion info
             pdf.set_font("Helvetica", "", 8)
             pdf.set_text_color(100, 100, 100)
+            completion_text = ""
             if log.get("completed_at"):
                 completed = str(log.get("completed_at", ""))[:19].replace("T", " ")
-                pdf.cell(0, 5, f"Completado: {completed}", "LRB", 1)
+                completion_text = f"Completado: {completed}"
             else:
-                pdf.cell(0, 5, f"Registrado: {str(log.get('created_at', ''))[:19].replace('T', ' ')}", "LRB", 1)
+                completion_text = f"Registrado: {str(log.get('created_at', ''))[:19].replace('T', ' ')}"
+            
+            pdf.cell(0, 5, completion_text, "LRB", 1)
             pdf.set_text_color(0, 0, 0)
             
             pdf.ln(4)
