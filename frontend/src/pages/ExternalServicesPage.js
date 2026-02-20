@@ -352,6 +352,7 @@ export default function ExternalServicesPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Filters */}
