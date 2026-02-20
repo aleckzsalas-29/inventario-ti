@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { externalServicesAPI, companiesAPI } from '../lib/api';
+import { externalServicesAPI, companiesAPI, reportsAPI } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -10,7 +10,7 @@ import { Textarea } from '../components/ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { 
   Plus, Server, Globe, Shield, Cloud, HardDrive, Edit, Trash2, 
-  MoreVertical, Loader2, Search, Calendar, DollarSign, AlertCircle, SlidersHorizontal
+  MoreVertical, Loader2, Search, Calendar, DollarSign, AlertCircle, SlidersHorizontal, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import CustomFieldsRenderer from '../components/CustomFieldsRenderer';
