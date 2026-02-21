@@ -2866,7 +2866,8 @@ async def generate_external_services_report_pdf(
                     continue
                 
                 pdf.set_font("Helvetica", "", 8)
-                lines = pdf.multi_cell(text_width, 4, str(value), split_only=True)
+                safe_value = sanitize_text(str(value))
+                lines = pdf.multi_cell(text_width, 4, safe_value, split_only=True)
                 row_height = max(5, len(lines) * 4)
                 
                 if pdf.get_y() + row_height > 280:
@@ -2878,7 +2879,7 @@ async def generate_external_services_report_pdf(
                 pdf.cell(label_width, row_height, f"{label}:", "L", 0)
                 
                 pdf.set_font("Helvetica", "", 8)
-                pdf.multi_cell(text_width, 4, str(value), border=0, align="L")
+                pdf.multi_cell(text_width, 4, safe_value, border=0, align="L")
                 end_y = pdf.get_y()
                 
                 pdf.line(10 + page_width, start_y, 10 + page_width, end_y)
