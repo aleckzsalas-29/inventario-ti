@@ -575,6 +575,29 @@ def generate_id() -> str:
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+def sanitize_text(text: str) -> str:
+    """Sanitize text for PDF - replace special Unicode characters"""
+    if not text:
+        return ""
+    text = str(text)
+    # Replace curly quotes and apostrophes
+    replacements = {
+        ''': "'", ''': "'", '"': '"', '"': '"',
+        '–': '-', '—': '-', '…': '...',
+        '•': '*', '·': '*',
+        '°': 'o', '´': "'", '`': "'",
+        '\u00a0': ' ',  # Non-breaking space
+        '\u2018': "'", '\u2019': "'",  # Single curly quotes
+        '\u201c': '"', '\u201d': '"',  # Double curly quotes
+        '\u2013': '-', '\u2014': '-',  # En/Em dashes
+        '\u2026': '...',  # Ellipsis
+        '\u00b0': 'o',  # Degree symbol
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    # Remove any remaining non-latin1 characters
+    return text.encode('latin-1', errors='replace').decode('latin-1')
+
 # ==================== PDF HELPER CLASS ====================
 
 class ModernPDF(FPDF):
