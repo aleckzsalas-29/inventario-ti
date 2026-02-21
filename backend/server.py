@@ -2280,7 +2280,8 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
                 # Calculate text height
                 pdf.set_font("Helvetica", "", 9)
                 text_width = page_width - 30
-                lines = pdf.multi_cell(text_width, 5, str(value), split_only=True)
+                safe_value = sanitize_text(str(value))
+                lines = pdf.multi_cell(text_width, 5, safe_value, split_only=True)
                 text_height = len(lines) * 5
                 row_height = max(6, text_height)
                 
@@ -2305,7 +2306,7 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
                 if is_first:
                     pdf.line(x_val, y_val, margin_left + page_width, y_val)
                 
-                pdf.multi_cell(text_width, 5, str(value), border=0, align="L")
+                pdf.multi_cell(text_width, 5, safe_value, border=0, align="L")
                 end_y = pdf.get_y()
                 
                 # Draw right border
