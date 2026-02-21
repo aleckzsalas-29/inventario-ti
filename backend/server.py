@@ -2503,6 +2503,14 @@ async def generate_maintenance_report_pdf(
                 pdf.set_font("Helvetica", "", 8)
                 pdf.cell(0, 5, eq.get('status', 'N/A'), "R", 1)
             
+            # Assigned employee
+            assigned_name = employees_map.get(eq.get("assigned_to", ""), "")
+            if assigned_name:
+                pdf.set_font("Helvetica", "B", 8)
+                pdf.cell(25, 5, "Asignado a:", "L")
+                pdf.set_font("Helvetica", "", 8)
+                pdf.cell(0, 5, assigned_name, "R", 1)
+            
             # Build maintenance detail rows
             detail_rows = []
             detail_rows.append(("Descripcion", log.get('description', '')))
