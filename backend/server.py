@@ -2227,7 +2227,7 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
                 available_width = 190 - 30  # page width minus label
                 
                 # Use multi_cell for long text
-                pdf.multi_cell(available_width, 5, str(value), border=border_right + border_top, align="L")
+                pdf.multi_cell(available_width, 5, sanitize_text(str(value)), border=border_right + border_top, align="L")
                 
                 # Draw left border for multi-line content
                 end_y = pdf.get_y()
