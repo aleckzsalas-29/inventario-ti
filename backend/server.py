@@ -2572,7 +2572,8 @@ async def generate_maintenance_report_pdf(
                 
                 # Calculate text height for this row
                 pdf.set_font("Helvetica", "", 8)
-                lines = pdf.multi_cell(text_width, 4, str(value), split_only=True)
+                safe_value = sanitize_text(str(value))
+                lines = pdf.multi_cell(text_width, 4, safe_value, split_only=True)
                 row_height = max(5, len(lines) * 4)
                 
                 # Check for page break
@@ -2588,7 +2589,7 @@ async def generate_maintenance_report_pdf(
                 # Draw value
                 pdf.set_font("Helvetica", "", 8)
                 x_val = pdf.get_x()
-                pdf.multi_cell(text_width, 4, str(value), border=0, align="L")
+                pdf.multi_cell(text_width, 4, safe_value, border=0, align="L")
                 end_y = pdf.get_y()
                 
                 # Draw right border
