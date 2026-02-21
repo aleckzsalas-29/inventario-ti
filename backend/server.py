@@ -2357,6 +2357,13 @@ async def generate_maintenance_report_pdf(
         eq_list = await db.equipment.find({"id": {"$in": equipment_ids}}, {"_id": 0}).to_list(500)
         equipment_map = {eq["id"]: eq for eq in eq_list}
     
+    # Get assigned employees
+    assigned_ids = list(set([eq.get("assigned_to") for eq in equipment_map.values() if eq.get("assigned_to")]))
+    employees_map = {}
+    if assigned_ids:
+        emp_list = await db.employees.find({"id": {"$in": assigned_ids}}, {"_id": 0}).to_list(100)
+        employees_map = {e["id"]: f"{e.get('first_name', '')} {e.get('last_name', '')}" for e in emp_list}
+    
     # Statistics
     stats = {"Preventivo": 0, "Correctivo": 0, "Reparacion": 0, "Otro": 0}
     status_stats = {"Pendiente": 0, "En Proceso": 0, "Finalizado": 0}
