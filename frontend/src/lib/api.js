@@ -144,7 +144,14 @@ export const reportsAPI = {
 };
 
 export const notificationsAPI = {
-  sendEmail: (data) => api.post('/notifications/email', data),
+  getSettings: () => api.get('/notifications/settings'),
+  updateSettings: (data) => api.put('/notifications/settings', data),
+  check: () => api.get('/notifications/check'),
+  getHistory: () => api.get('/notifications/history'),
+  sendTestEmail: (data) => api.post('/notifications/email/test', data),
+  sendNotification: (data) => api.post('/notifications/email/send', data),
+  triggerAuto: () => api.post('/notifications/send-now'),
+  getSchedulerStatus: () => api.get('/notifications/scheduler/status'),
 };
 
 export default api;
