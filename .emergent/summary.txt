@@ -1,176 +1,212 @@
-<analysis>**original_problem_statement:** The user wants to modernize an existing PHP IT inventory project and has provided a series of evolving requirements.
+<analysis>**original_problem_statement:** The user wants to modernize an existing PHP IT inventory project into a full-stack application with a modern interface.
 
-**Initial requirements:**
-*   A modern interface.
-*   A module for equipment activity logs (bitácoras).
-*   Assignment of equipment to companies.
-*   Modifiable equipment fields.
-*   Downloadable log reports by company and equipment.
-*   A section for externally contracted services.
-*   A module for creating quotes and invoices.
-*   Email notifications for log entries or equipment changes.
+**Initial & Evolved Requirements (from previous sessions):**
+*   Modules for equipment, maintenance logs (bitácoras), companies, employees, services, quotes, and invoices.
+*   Key features: equipment assignment, downloadable PDF reports, dynamic custom fields with validation, and Mexican CFDI fields.
+*   Cost-related fields were removed, and some modules were renamed.
 
-**Evolved requirements (implemented in previous sessions):**
-1.  Remove all cost-related fields.
-2.  Change Repairs module to Maintenance Logs with types: preventive, corrective, repair, and other.
-3.  Add credential fields to equipment (Windows, email, cloud).
-4.  Remove , , , and  from equipment.
-5.  Add  field to equipment.
-6.  Add more detailed hardware/software characteristic fields to equipment.
-7.  Add specific fields to maintenance logs based on type (preventive, corrective).
-8.  Add a feature to view maintenance history per equipment and download it as a PDF.
-9.  Make invoices and quotes customizable with Mexican CFDI requirements.
-
-**Latest user request:**
-1.  Implement a system for adding custom fields to all sections of the project.
-2.  Prepare the backend for integrating a PAC (Proveedor Autorizado de Certificación) for CFDI signing, but do not implement the final integration yet.
+**Latest User Requests (from this session):**
+1.  **PDF Report Enhancements:**
+    *   Make maintenance reports more professional and elegant.
+    *   Include all equipment details (hardware, software, etc.) in maintenance reports.
+    *   Ensure all text fields (description, technician name) are fully visible without truncation.
+    *   Add the assigned employee's name to maintenance reports.
+2.  **New Features:**
+    *   Assign external services to companies and make them downloadable as a PDF report.
+    *   Create a centralized Reports page to download all asset reports (equipment, maintenance, services) with advanced date filtering (day, month, year, custom range).
+    *   Implement a Settings page to allow customization of the application's appearance.
+    *   Allow uploading a company logo to be displayed on the login page and dashboard.
+    *   Allow changing the application's primary color theme.
+    *   Allow customizing the login page with a background image and custom titles.
+    *   Implement a functional in-app notification system (the bell icon).
+    *   Implement email notifications for key events (e.g., pending maintenance, expiring services).
+    *   Make email notifications automatic (e.g., sent daily).
+3.  **UI/UX Improvements:**
+    *   On the main equipment list, display the name of the employee to whom the equipment is assigned.
+4.  **Branding:**
+    *   Remove all logos, images, and branding related to Emergent.
+5.  **Bug Fixes & Support:**
+    *   Fix the error when downloading the external services PDF.
+    *   Fix the bug where changing the theme color in settings did not apply the changes.
+    *   Fix the  error when saving settings on the user's server.
+    *   Provide continuous support for deploying updates to the user's self-hosted Ubuntu server.
 
 **User's preferred language**: Spanish (es)
 
 **what currently exists?**
-The agent has performed two major refactoring sessions on the full-stack application.
-1.  **First Refactor**: Aligned the application with initial new requirements (removing costs, adding maintenance logs and credentials). This was fully tested and verified.
-2.  **Second Refactor**: Implemented more detailed fields for equipment (Hardware, Software, Antivirus), added specific fields to maintenance logs based on type, included Mexican CFDI fields in invoices/quotations, and added a PDF download for maintenance history. This was also tested and verified.
+The application is a feature-rich IT asset management system. The agent has successfully implemented a series of major features requested by the user in this session.
 
-Most recently, the agent began implementing the Custom Fields feature. A new page was created to manage custom field definitions, and a reusable component was built to render them. This component has been integrated into the equipment form, but it is untested. Additionally, placeholder endpoints and configuration have been added to the backend to prepare for a future CFDI signing (PAC) integration.
+Key existing components:
+*   **Centralized Reporting Page:** A new  page allows users to generate and download various PDF reports with filters for company, time period, and custom date ranges.
+*   **System Customization:** A new  page provides extensive customization options, including:
+    *   **General:** Company name and logo URL.
+    *   **Appearance:** A dynamic theme color picker that applies sitewide.
+    *   **Login Page:** Custom background image, welcome title, and subtitle.
+*   **Enhanced PDF Reports:** All PDF reports (maintenance, external services, etc.) have been professionally redesigned to include company logos, theme colors, detailed data, and proper text wrapping.
+*   **Notification System:**
+    *   An in-app notification popover (bell icon) alerts users to pending maintenance and expiring services.
+    *   An email notification system using Resend has been integrated. It can be triggered manually from a dedicated  page.
+*   **UI Improvements:** The main equipment table now displays the name of the employee assigned to each piece of equipment.
+*   **Branding Removal:** All hardcoded Emergent branding has been removed from the application's source code ().
 
 **Last working item**:
-*   **Last item agent was working:** The agent was working on two parallel tasks based on the user's request:
-    1.  **Implementing dynamic custom fields:** The agent created a new page () for managing field definitions, a reusable component () to display them, and integrated this into the equipment creation/editing form ().
-    2.  **Preparing for CFDI signing (PAC integration):** The agent added placeholder configuration and API endpoints (, ) in the backend () to facilitate a future integration.
-*   **Status:** 
-*   **Agent Testing Done:** N
-*   **Which testing method agent to use?** . The full flow for creating custom field definitions and then using them when creating/editing equipment needs end-to-end testing. The backend PAC preparation is just a placeholder and does not require testing yet.
-*   **User Testing Done:** N
+- **Last item agent was working:** The agent was implementing automatic, scheduled email notifications. The plan was to use  to run daily jobs that check for pending maintenance or expiring services and automatically send summary emails to all active users. The agent had added the dependency, updated the settings model in the backend, and was in the process of writing the scheduler logic and startup events in .
+    - **Status:** IN PROGRESS
+    - **Agent Testing Done:** N
+    - **Which testing method agent to use?** backend testing agent. The agent needs to verify that the  jobs are correctly scheduled on application startup, that they trigger at the specified time, and that they successfully send emails via Resend when there are pending items.
+    - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-*   **Issue 1: PDF Download Script error**
-    *   **Description:** The user reported a generic Script error when trying to download a PDF from the maintenance page. The agent diagnosed and fixed two separate underlying causes: 1) A PDF rendering issue with long text fields, and 2) A 404 error when trying to generate a report for a maintenance log whose associated equipment had been deleted.
-    *   **Attempted fixes:** The agent replaced  with  for PDF generation and added a check in the backend to handle non-existent equipment gracefully. After the last fix, testing showed the download was successful.
-    *   **Status:** . The agent believes the issue is fixed, but the user has not confirmed.
-    *   **Is recurring issue?** Y (It required multiple debug cycles to find the root causes).
-    *   **Should Test frontend/backend/both after fix?** both (if it recurs).
+- **Issue 1: User's Self-Hosted Server is Frequently Out of Sync (P0)**
+  - **Description:** The most persistent issue is that the user's deployment on their Ubuntu server does not get updated after the agent implements fixes or new features. The user repeatedly reports bugs (e.g., , missing buttons, old PDF format) that have already been fixed in the agent's environment. This is not a code bug but an operational/process failure.
+  - **Attempted fixes:** The agent has repeatedly instructed the user to use the Save to Github feature in the Emergent UI and then run  on their server. It has also provided detailed manual code copy/paste instructions and direct download links as alternatives.
+  - **Next debug checklist:**
+    1.  Upon starting, immediately remind the user that for any new feature or fix to appear on their server, they must first wait for the Save to Github confirmation and then run the update commands (, yarn run v1.22.22
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command., service restarts).
+    2.  If the user reports an issue, the first step should always be to ask them to confirm they have successfully pulled the latest code by checking the last commit hash (commit 1f683031fd9e294c257f6681a9dc27bb66ef03f3
+Author: emergent-agent-e1 <github@emergent.sh>
+Date:   Mon Mar 9 21:17:48 2026 +0000
+
+    auto-commit for c5c4c1d1-a5da-4419-90e3-7d41febf3e4d).
+  - **Why fix this issue and what will be achieved with the fix?** Resolving this communication/process gap is critical. It will prevent wasted time debugging already-solved issues and allow the user to actually use and verify the new features.
+  - **Status:** RECURRING
+  - **Is recurring issue?** Y
+  - **Should Test frontend/backend/both after fix?** N/A (Process issue)
+  - **Blocked on other issue:** None
 
 **In progress Task List**:
-*   **Task 1: Complete and test Custom Fields implementation (P0)**
-    *   **Where to resume:** The UI and basic logic are in place for custom fields on the Equipment page. The next steps are:
-        1.  Thoroughly test the entire workflow: create a custom field definition (e.g., for Equipment), verify it appears in the equipment form, add a value, save the equipment, and ensure the value is persisted and displayed correctly.
-        2.  Integrate the  component into the other forms as requested by the user (todas las secciones del proyecto), such as Companies, Employees, and Maintenance Logs. This will require adding the state and save/load logic to each respective page.
-    *   **What will be achieved with this?** The application will have a fully dynamic way to add new data fields without code changes, fulfilling a core user requirement.
-    *   **Status:** 
-    *   **Should Test frontend/backend/both after fix?** both
-    *   **Blocked on something:** None.
+- **Task 1: Complete and Test Automatic Email Notifications (P0)**
+  - **Where to resume:** The file  needs to be completed.
+    1.  Finish writing the scheduler jobs (, ).
+    2.  Ensure the  correctly initializes and starts the .
+    3.  Update the  page on the frontend to include toggle switches and time configuration for these automatic notifications.
+    4.  Thoroughly test that the scheduler runs and sends emails correctly.
+  - **What will be achieved with this?** This will complete a major user request, making the notification system proactive instead of reactive.
+  - **Status:** IN PROGRESS
+  - **Should Test frontend/backend/both after fix?** both
+  - **Blocked on something:** None
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks:**
-    *   **P0: Integrate with a PAC for CFDI signing.** The backend is prepared. The next step is to ask the user to choose a provider (e.g., Facturama, Finkok), get the API keys, and then use the  to implement the actual signing logic in the placeholder endpoints.
+    *   **P1: Refactor :** This file has grown to over 3000 lines. It is critical to break it down into smaller, more manageable modules (e.g., , , , ) to improve maintainability and reduce complexity.
 *   **Future Tasks:**
-    *   **P1: Email Notifications.** This requires the user to provide an API key for Resend.
-    *   **P2: Service Renewal Notifications.** An agent-suggested feature to add notifications for external services nearing their renewal date.
-    *   **P2: Refactor .** The agent had to remove a checklist feature to fix a Maximum call stack size exceeded error. This could be re-implemented more robustly.
+    *   **P1: Integrate with a PAC for CFDI signing:** This was a requirement from a previous session. The agent needs to ask the user for their preferred provider (e.g., Facturama, Finkok) and API credentials, then use the  to implement it.
+    *   **P2: Refactor :** The checklist feature, which was removed in a past session to fix a bug, could be re-implemented in a more performant way.
 
 **Completed work in this session**
-*   **Major Feature Refactor:**
-    *   **Equipment:** Added detailed hardware, software, and antivirus fields. Removed legacy fields.
-    *   **Maintenance:** Added conditional fields based on maintenance type (Preventive, Corrective).
-    *   **Invoices/Quotes:** Added comprehensive fields for Mexican CFDI compliance.
-    *   **Reports:** Implemented a PDF download for the maintenance history of a specific piece of equipment.
-*   **Frontend Overhaul:**
-    *   Rewrote , , , , and  to support the new data models and provide a better user experience with a tabbed layout.
-*   **Bug Fix Resolution:**
-    *   **:** Fixed a frontend crash on  by simplifying complex JSX that was causing a recursive loop in a Babel plugin.
-    *   **PDF Download Failure:** Resolved a Script error by fixing two backend issues related to PDF generation and handling of orphaned data.
-*   **Initial Implementation of New Features:**
-    *   Created the UI and backend integration hooks for the Custom Fields feature.
-    *   Prepared the backend with placeholder endpoints for a future PAC integration for CFDI signing.
-
-**Earlier issues found/mentioned but not fixed**
-None.
-
-**Known issue recurrence from previous fork**
-None.
+- **Bug Fixes:**
+  - Resolved the critical  error when creating maintenance logs.
+  - Fixed multiple  errors in PDF generation by adding a text sanitization function.
+  - Fixed a bug where the  was not being saved when creating a new company.
+  - Fixed a bug where the dynamic theme color was not being applied to UI elements.
+- **New Features & Enhancements:**
+  - **Reports & PDFs:**
+    - Created a centralized **Reports Page** () with advanced filtering.
+    - Added a downloadable PDF report for **External Services**.
+    - Completely redesigned all **Maintenance PDF reports** with a professional layout, full equipment details, assigned employee names, and correct text wrapping.
+  - **Customization & Branding:**
+    - Created a **Settings Page** () with tabs for General, Appearance, and Login Page settings.
+    - Implemented sitewide dynamic **theme color** customization.
+    - Implemented full **login page customization** (logo, background image, titles).
+    - Successfully removed all hardcoded **Emergent branding** from .
+  - **Notifications:**
+    - Implemented a functional in-app **notification popover** (bell icon).
+    - Integrated **Resend** for manual **email notifications** for pending maintenance and expiring services.
+  - **UI Improvements:**
+    - Added the assigned employee's name to the main **Equipment list**.
+    - Added the  field with a calendar picker to the maintenance log form.
+- **Deployment Support:**
+  - Created a consolidated  file with deployment commands.
+  - Provided extensive and continuous troubleshooting for the user's self-hosted Ubuntu environment.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-*   **Backend:** FastAPI, MongoDB (via ), Pydantic, JWT Authentication,  for PDF generation.
-*   **Frontend:** React, React Router, Shadcn UI, Tailwind CSS, ,  for toasts.
-*   **Architecture:** Single Page Application (SPA) with a RESTful API backend.
+*   **Backend:** FastAPI, MongoDB, Pydantic, JWT, , .
+*   **New Backend Tech:**  for running background tasks (in progress).
+*   **Frontend:** React, React Router, Shadcn UI, Tailwind CSS, Axios, .
 
 **key DB schema**
-Defined via Pydantic models in :
-*   : Now includes , , , , .
-*   : Now includes , .
-*    / : Now include .
-*   : {name, label, field_type, entity_type: str}
-*   : {field_id, record_id, value}
+*   ** collection (New):** Stores a single document for system-wide settings.
+    
 
 **changes in tech stack**
-*    was used for PDF generation in the backend.
+*   **Added:**  (for emails),  (for scheduled tasks).
 
 **All files of reference**
-*   **Backend:** 
+*   **Backend:**
+    *    (Heavily modified; all new features are here)
+    *    (Requires )
+    *   
+*   **Frontend (Modified):**
+    *    (Branding removed)
+    *    (New routes, theme provider)
+    *    (New menu items, notification popover)
+    *    (Added assigned employee column)
+    *    (Added PDF download button)
+    *    (Now fully customizable)
+    *   
 *   **Frontend (New):**
     *   
     *   
-*   **Frontend (Modified):**
     *   
     *   
-    *   
-    *   
-    *   
-    *   
-    *   
-    *   
-*   **Docs & Reports:** , 
 
 **Areas that need refactoring**:
-*   The logic for handling custom fields in  could be extracted into a reusable custom hook (e.g., ) to simplify integration with other pages.
-*   The  checklist feature, which was removed to fix a bug, could be re-implemented in a more performant way.
+*   ** is critically oversized.** It urgently needs to be broken down into a proper directory structure (e.g., , , ) to be maintainable. This should be the highest priority refactoring task.
 
 **key api endpoints**
-*   : (NEW) Generates a PDF of maintenance history.
-*   : (NEW) CRUD for custom field definitions.
-*   : (NEW - Placeholder) Endpoint to sign an invoice.
-*   : (NEW - Placeholder) Endpoint to sign a quotation.
+*   **New:**
+    *   : To manage all system customization.
+    *   : Generates PDF for external services.
+    *   : Sends a test email.
+    *   , : Manually trigger notification emails.
+    *   : (In progress) To manage automatic notification settings.
 
 **Critical Info for New Agent**
-*   Your immediate priority is to complete and test the Custom Fields feature. Start by verifying the existing implementation on the Equipment page, then extend it to other modules as requested by the user.
-*   After custom fields, the next task is the PAC integration for CFDI signing. You will need to ask the user for their preferred provider and API credentials before proceeding.
-*   The Script error related to PDF downloads should be resolved, but be aware of its history if the user reports it again. The fix involved handling orphaned data in the backend.
+*   **The user's server is always out of sync.** Your first assumption when the user reports a bug should be that they are running old code. You must be patient and repeatedly guide them through the update process: **Save to Github ->  -> yarn run v1.22.22
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command. -> restart services**. Do not start debugging code until you have confirmation that the code on their server is up-to-date.
+*   The  file is extremely large and difficult to work with. Propose and prioritize its refactoring.
+*   The user's Resend API key is . It's configured to only send emails to verified addresses while in sandbox mode.
 
 **documents and test reports created in this job**
 *   
 *   
-*   
+*    (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (msg 216):** Empieza con los campos personalizados y deja preparada la integración de timbrado (Start with the custom fields and leave the signing integration ready). .
-2.  **User (msg 213):** A summary of completed and pending tasks, confirming the agent should proceed. .
-3.  **User (msg 187):** Specifies the PDF download error occurs on: Mantenimientos - Botón de descarga por equipo (Maintenance - Download button per equipment). .
-4.  **User (msg 175):** bajar un pdf (download a pdf). .
-5.  **User (msg 150):** Script error. .
-6.  **User (msg 63):** Confirms changes: 1. Replace warranty with antivirus. 2. Yes to custom fields. 3. Continue. .
-7.  **User (msg 60):** New requirements: remove more fields from equipment, add detailed hardware/software fields, add maintenance history PDF, add customizable CFDI fields for invoices. .
+1.  **User:** Requests automatic email notifications. (Status: IN PROGRESS)
+2.  **User:** Asks how the current (manual) email notifications work. (Status: Addressed)
+3.  **User:** Provides Resend API key and requirements for email notifications. (Status: Implemented)
+4.  **User:** Requests email notifications. (Status: Implemented)
+5.  **User:** Reports the notification bell doesn't work. (Status: Fixed)
+6.  **User:** Reports the theme color changes are not applied. (Status: Fixed)
+7.  **User:** Reports that Emergent branding is still visible on their server and wants more login page customization. (Status: Fixed, branding is in )
+8.  **User:** Requests to see the assigned employee's name in the equipment list. (Status: Implemented)
+9.  **User:** Reports a  error when trying to save settings. (Status: Addressed, user's server was out of sync)
+10. **User:** Makes a large request for a new Reports page, logo/branding customization, and removal of Emergent branding. (Status: Implemented)
 
 **Project Health Check:**
-*   **Broken:** The Custom Fields feature is partially implemented but completely untested. It's likely non-functional or buggy in its current state.
-*   **Mocked:** The backend PAC integration for CFDI signing consists of placeholder endpoints that do nothing.
+*   **Broken:**
+    - The user's self-hosted deployment is operationally unstable due to being constantly out of sync with the main repository.
+*   **Mocked:**
+    - CFDI signing for invoices/quotes is still a placeholder.
 
 **3rd Party Integrations**
-*   **Resend** (v2.21.0): For email notifications. Not yet implemented; requires user API key.
-*   **PAC Provider (Facturama, Finkok, etc.):** For CFDI signing. Not yet chosen or implemented.
+*   **Resend v2.0.0:** For sending emails. Uses a user-provided API key.
+*   **PAC Provider (TBD):** For CFDI e-invoicing. Pending user choice.
 
 **Testing status**
-*   **Testing agent used after significant changes:** YES, after the second major refactor ( was the last report).
-*   **Troubleshoot agent used after agent stuck in loop:** NO.
-*   **Test files created:** None.
-*   **Known regressions:** None from the last test run, but significant untested code for Custom Fields has been added since.
+*   **Testing agent used after significant changes:** YES, was used early in the session to validate a batch of P0 features and fixed two bugs.
+*   **Troubleshoot agent used after agent stuck in loop:** NO
+*   **Test files created:** None
+*   **Known regressions:** None in the code. The main regression is the user's ability to keep their environment updated.
 
 **Credentials to test flow:**
 *   **Email:** 
 *   **Password:** 
+*   **Resend API Key:** 
 
 **What agent forgot to execute**
-The user requested custom fields for all sections of the project. The agent has only started the implementation for the Equipment section. The task needs to be extended to other modules like Companies, Employees, and Maintenance Logs.</analysis>
+*   The agent has been very thorough in this session. The main pending items are completing the in-progress task (automatic notifications) and addressing the larger architectural problem of the monolithic  file.</analysis>

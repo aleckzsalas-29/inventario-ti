@@ -19,6 +19,8 @@ import base64
 import httpx
 import tempfile
 import resend
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -35,6 +37,9 @@ RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
+
+# Scheduler for automatic notifications
+scheduler = AsyncIOScheduler()
 JWT_EXPIRATION_HOURS = 24
 
 # PAC Configuration (for CFDI timbrado)
@@ -420,6 +425,18 @@ class SystemSettings(BaseModel):
     login_background_url: Optional[str] = None
     login_title: Optional[str] = None
     login_subtitle: Optional[str] = None
+
+# Notification Settings
+class NotificationSettings(BaseModel):
+    enabled: bool = True
+    auto_send_enabled: bool = False
+    send_time: str = "08:00"  # HH:MM format
+    service_renewal_enabled: bool = True
+    service_renewal_days: int = 30  # Days before renewal to notify
+    maintenance_pending_enabled: bool = True
+    new_equipment_enabled: bool = True
+    recipient_type: str = "all_users"  # all_users, admins_only, custom
+    custom_recipients: Optional[List[str]] = None
 
 # CFDI Item for Mexico invoicing
 class CFDIItemCreate(BaseModel):
@@ -3405,6 +3422,235 @@ async def check_and_send_notifications(current_user: dict = Depends(get_current_
         "message": "Use POST /notifications/email/send to send notifications"
     }
 
+# ==================== NOTIFICATION SETTINGS ENDPOINTS ====================
+
+@api_router.get("/notifications/settings")
+async def get_notification_settings(current_user: dict = Depends(get_current_user)):
+    """Get notification settings"""
+    settings = await db.notification_settings.find_one({"type": "notifications"}, {"_id": 0})
+    if not settings:
+        return {
+            "enabled": True,
+            "auto_send_enabled": False,
+            "send_time": "08:00",
+            "service_renewal_enabled": True,
+            "service_renewal_days": 30,
+            "maintenance_pending_enabled": True,
+            "new_equipment_enabled": True,
+            "recipient_type": "all_users",
+            "custom_recipients": []
+        }
+    return settings
+
+@api_router.put("/notifications/settings")
+async def update_notification_settings(settings: NotificationSettings, current_user: dict = Depends(get_current_user)):
+    """Update notification settings"""
+    settings_dict = {
+        "type": "notifications",
+        "enabled": settings.enabled,
+        "auto_send_enabled": settings.auto_send_enabled,
+        "send_time": settings.send_time,
+        "service_renewal_enabled": settings.service_renewal_enabled,
+        "service_renewal_days": settings.service_renewal_days,
+        "maintenance_pending_enabled": settings.maintenance_pending_enabled,
+        "new_equipment_enabled": settings.new_equipment_enabled,
+        "recipient_type": settings.recipient_type,
+        "custom_recipients": settings.custom_recipients or [],
+        "updated_at": now_iso(),
+        "updated_by": current_user.get("id")
+    }
+    await db.notification_settings.update_one(
+        {"type": "notifications"}, 
+        {"$set": settings_dict}, 
+        upsert=True
+    )
+    
+    # Update scheduler if auto_send changed
+    await update_scheduler_job(settings.auto_send_enabled, settings.send_time)
+    
+    return {"message": "Notification settings updated", **settings_dict}
+
+@api_router.get("/notifications/history")
+async def get_notification_history(limit: int = 50, current_user: dict = Depends(get_current_user)):
+    """Get notification send history"""
+    history = await db.notification_history.find({}, {"_id": 0}).sort("sent_at", -1).limit(limit).to_list(limit)
+    return history
+
+# ==================== AUTOMATIC NOTIFICATION FUNCTIONS ====================
+
+async def get_recipients_for_notifications():
+    """Get list of recipient emails based on settings"""
+    notif_settings = await db.notification_settings.find_one({"type": "notifications"}, {"_id": 0})
+    if not notif_settings:
+        notif_settings = {"recipient_type": "all_users", "custom_recipients": []}
+    
+    recipients = []
+    
+    if notif_settings.get("recipient_type") == "custom" and notif_settings.get("custom_recipients"):
+        recipients = notif_settings["custom_recipients"]
+    elif notif_settings.get("recipient_type") == "admins_only":
+        # Get admin users
+        admin_role = await db.roles.find_one({"name": "Administrador"}, {"id": 1})
+        if admin_role:
+            users = await db.users.find(
+                {"is_active": True, "role_id": admin_role["id"]}, 
+                {"_id": 0, "email": 1}
+            ).to_list(100)
+            recipients = [u["email"] for u in users if u.get("email")]
+    else:
+        # All users
+        users = await db.users.find({"is_active": True}, {"_id": 0, "email": 1}).to_list(100)
+        recipients = [u["email"] for u in users if u.get("email")]
+    
+    # Also get company contact emails
+    companies = await db.companies.find({"email": {"$exists": True, "$ne": ""}}, {"_id": 0, "email": 1}).to_list(100)
+    company_emails = [c["email"] for c in companies if c.get("email")]
+    
+    # Combine and deduplicate
+    all_recipients = list(set(recipients + company_emails))
+    return all_recipients
+
+async def send_automatic_notifications():
+    """Background task to send automatic notifications"""
+    logging.info("Running automatic notification check...")
+    
+    try:
+        # Get notification settings
+        notif_settings = await db.notification_settings.find_one({"type": "notifications"}, {"_id": 0})
+        if not notif_settings or not notif_settings.get("enabled", True):
+            logging.info("Notifications disabled, skipping...")
+            return
+        
+        # Get app settings for branding
+        app_settings = await db.settings.find_one({"type": "system"}, {"_id": 0}) or {}
+        
+        # Get recipients
+        recipients = await get_recipients_for_notifications()
+        if not recipients:
+            logging.info("No recipients configured, skipping...")
+            return
+        
+        data = {
+            "company_name": app_settings.get("company_name", "InventarioTI"),
+            "logo_url": app_settings.get("logo_url", ""),
+            "primary_color": app_settings.get("primary_color", "#3b82f6")
+        }
+        
+        notifications_sent = []
+        
+        # Check service renewals
+        if notif_settings.get("service_renewal_enabled", True):
+            renewal_days = notif_settings.get("service_renewal_days", 30)
+            today = datetime.now(timezone.utc)
+            services = await db.external_services.find({"is_active": {"$ne": False}}, {"_id": 0}).to_list(500)
+            expiring = []
+            for svc in services:
+                if svc.get("renewal_date"):
+                    try:
+                        renewal = datetime.fromisoformat(svc["renewal_date"].replace("Z", "+00:00"))
+                        days_until = (renewal - today).days
+                        if 0 <= days_until <= renewal_days:
+                            expiring.append({**svc, "days_until": days_until})
+                    except:
+                        pass
+            
+            if expiring:
+                data["services"] = sorted(expiring, key=lambda x: x.get("days_until", 999))
+                subject, html = get_email_template("service_renewal", data)
+                
+                for email in recipients:
+                    result = await send_email_notification(email, subject, html)
+                    if result.get("status") == "success":
+                        notifications_sent.append({
+                            "type": "service_renewal",
+                            "recipient": email,
+                            "count": len(expiring)
+                        })
+                    await asyncio.sleep(0.1)
+        
+        # Check pending maintenances
+        if notif_settings.get("maintenance_pending_enabled", True):
+            maintenances = await db.maintenance_logs.find(
+                {"status": {"$in": ["Pendiente", "En Proceso"]}}, 
+                {"_id": 0}
+            ).to_list(100)
+            
+            if maintenances:
+                data["maintenances"] = maintenances
+                subject, html = get_email_template("maintenance_pending", data)
+                
+                for email in recipients:
+                    result = await send_email_notification(email, subject, html)
+                    if result.get("status") == "success":
+                        notifications_sent.append({
+                            "type": "maintenance_pending",
+                            "recipient": email,
+                            "count": len(maintenances)
+                        })
+                    await asyncio.sleep(0.1)
+        
+        # Log notification history
+        if notifications_sent:
+            await db.notification_history.insert_one({
+                "sent_at": now_iso(),
+                "type": "automatic",
+                "notifications": notifications_sent,
+                "total_sent": len(notifications_sent)
+            })
+            logging.info(f"Automatic notifications sent: {len(notifications_sent)}")
+        else:
+            logging.info("No notifications to send")
+            
+    except Exception as e:
+        logging.error(f"Error sending automatic notifications: {str(e)}")
+
+async def update_scheduler_job(enabled: bool, send_time: str):
+    """Update the scheduler job based on settings"""
+    job_id = "auto_notifications"
+    
+    # Remove existing job if any
+    if scheduler.get_job(job_id):
+        scheduler.remove_job(job_id)
+    
+    if enabled:
+        # Parse time
+        try:
+            hour, minute = map(int, send_time.split(":"))
+        except:
+            hour, minute = 8, 0
+        
+        # Add new job
+        scheduler.add_job(
+            send_automatic_notifications,
+            CronTrigger(hour=hour, minute=minute),
+            id=job_id,
+            replace_existing=True
+        )
+        logging.info(f"Scheduled automatic notifications at {hour:02d}:{minute:02d}")
+
+@api_router.post("/notifications/send-now")
+async def trigger_notifications_now(current_user: dict = Depends(get_current_user)):
+    """Manually trigger automatic notifications"""
+    await send_automatic_notifications()
+    return {"message": "Notifications sent", "triggered_at": now_iso()}
+
+@api_router.get("/notifications/scheduler-status")
+async def get_scheduler_status(current_user: dict = Depends(get_current_user)):
+    """Get scheduler status"""
+    job = scheduler.get_job("auto_notifications")
+    if job:
+        next_run = job.next_run_time.isoformat() if job.next_run_time else None
+        return {
+            "scheduler_running": scheduler.running,
+            "job_active": True,
+            "next_run": next_run
+        }
+    return {
+        "scheduler_running": scheduler.running,
+        "job_active": False,
+        "next_run": None
+    }
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -3415,4 +3661,20 @@ app.add_middleware(
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    scheduler.shutdown(wait=False)
     client.close()
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize scheduler on startup"""
+    # Start scheduler
+    scheduler.start()
+    logging.info("Scheduler started")
+    
+    # Check if auto notifications are enabled and schedule if so
+    try:
+        notif_settings = await db.notification_settings.find_one({"type": "notifications"}, {"_id": 0})
+        if notif_settings and notif_settings.get("auto_send_enabled", False):
+            await update_scheduler_job(True, notif_settings.get("send_time", "08:00"))
+    except Exception as e:
+        logging.error(f"Error initializing scheduler: {str(e)}")
