@@ -108,6 +108,34 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
 
 # ==================== PERMISSIONS ====================
 
+@router.get("/permissions")
+async def get_all_permissions(current_user: dict = Depends(get_current_user)):
+    """Return all available permissions for role assignment"""
+    return {
+        "permissions": [
+            {"key": "admin", "label": "Administrador", "description": "Acceso completo al sistema"},
+            {"key": "users.read", "label": "Ver Usuarios", "description": "Puede ver la lista de usuarios"},
+            {"key": "users.write", "label": "Gestionar Usuarios", "description": "Puede crear, editar y desactivar usuarios"},
+            {"key": "companies.read", "label": "Ver Empresas", "description": "Puede ver empresas, sucursales y empleados"},
+            {"key": "companies.write", "label": "Gestionar Empresas", "description": "Puede crear y editar empresas, sucursales y empleados"},
+            {"key": "equipment.read", "label": "Ver Equipos", "description": "Puede ver el inventario de equipos"},
+            {"key": "equipment.write", "label": "Gestionar Equipos", "description": "Puede crear, editar y dar de baja equipos"},
+            {"key": "maintenance.read", "label": "Ver Mantenimientos", "description": "Puede ver registros de mantenimiento"},
+            {"key": "maintenance.write", "label": "Gestionar Mantenimientos", "description": "Puede crear y completar mantenimientos"},
+            {"key": "assignments.read", "label": "Ver Asignaciones", "description": "Puede ver asignaciones de equipos"},
+            {"key": "assignments.write", "label": "Gestionar Asignaciones", "description": "Puede asignar y devolver equipos"},
+            {"key": "services.read", "label": "Ver Servicios", "description": "Puede ver servicios externos"},
+            {"key": "services.write", "label": "Gestionar Servicios", "description": "Puede crear y editar servicios externos"},
+            {"key": "quotations.read", "label": "Ver Cotizaciones", "description": "Puede ver cotizaciones"},
+            {"key": "quotations.write", "label": "Gestionar Cotizaciones", "description": "Puede crear y editar cotizaciones"},
+            {"key": "invoices.read", "label": "Ver Facturas", "description": "Puede ver facturas"},
+            {"key": "invoices.write", "label": "Gestionar Facturas", "description": "Puede crear y editar facturas"},
+            {"key": "custom_fields.read", "label": "Ver Campos Personalizados", "description": "Puede ver campos personalizados"},
+            {"key": "custom_fields.write", "label": "Gestionar Campos Personalizados", "description": "Puede crear y editar campos personalizados"},
+        ]
+    }
+
+
 @router.get("/permissions/check")
 async def check_user_permission(permission: str, current_user: dict = Depends(get_current_user)):
     if current_user.get("role_id"):
