@@ -10,10 +10,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '../components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../components/ui/popover';
 import { 
   LayoutDashboard, Monitor, Building2, Users, UserCheck, Wrench, 
   Server, FileText, Receipt, LogOut, Menu, X,
-  Sun, Moon, Bell, ChevronDown, Search, SlidersHorizontal, FileDown, Settings
+  Sun, Moon, Bell, ChevronDown, Search, SlidersHorizontal, FileDown, Settings,
+  AlertCircle, CheckCircle, Info, Clock
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
@@ -41,6 +47,8 @@ export const MainLayout = () => {
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [appSettings, setAppSettings] = useState({ company_name: '', logo_url: '' });
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
     // Load settings from localStorage first for instant display
@@ -57,11 +65,71 @@ export const MainLayout = () => {
         localStorage.setItem('app_settings', JSON.stringify(res.data));
       }
     }).catch(() => {});
+
+    // Load notifications
+    loadNotifications();
   }, []);
+
+  const loadNotifications = async () => {
+    try {
+      // Get services expiring soon
+      const servicesRes = await api.get('/external-services');
+      const services = servicesRes.data || [];
+      
+      const today = new Date();
+      const notifs = [];
+
+      // Check for services expiring in 30 days
+      services.forEach(svc => {
+        if (svc.renewal_date) {
+          const renewalDate = new Date(svc.renewal_date);
+          const daysUntil = Math.ceil((renewalDate - today) / (1000 * 60 * 60 * 24));
+          
+          if (daysUntil <= 30 && daysUntil >= 0) {
+            notifs.push({
+              id: svc.id,
+              type: daysUntil <= 7 ? 'warning' : 'info',
+              title: `Servicio por renovar`,
+              message: `${svc.provider} (${svc.service_type}) vence en ${daysUntil} días`,
+              date: svc.renewal_date
+            });
+          }
+        }
+      });
+
+      // Get maintenance logs pending
+      const maintRes = await api.get('/maintenance-logs');
+      const maintenances = maintRes.data || [];
+      
+      const pendingMaint = maintenances.filter(m => m.status === 'Pendiente' || m.status === 'En Proceso');
+      if (pendingMaint.length > 0) {
+        notifs.push({
+          id: 'maint-pending',
+          type: 'info',
+          title: 'Mantenimientos pendientes',
+          message: `Tienes ${pendingMaint.length} mantenimiento(s) sin finalizar`,
+          date: new Date().toISOString()
+        });
+      }
+
+      setNotifications(notifs);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  };
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const getNotificationIcon = (type) => {
+    switch(type) {
+      case 'warning': return <AlertCircle className="w-4 h-4 text-orange-500" />;
+      case 'success': return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'error': return <AlertCircle className="w-4 h-4 text-red-500" />;
+      default: return <Info className="w-4 h-4 text-blue-500" />;
+    }
   };
 
   return (
@@ -184,10 +252,75 @@ export const MainLayout = () => {
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </Button>
 
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-            </Button>
+            <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative" data-testid="notifications-btn">
+                  <Bell className="w-5 h-5" />
+                  {notifications.length > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="p-3 border-b">
+                  <h4 className="font-semibold">Notificaciones</h4>
+                  <p className="text-xs text-muted-foreground">
+                    {notifications.length > 0 ? `${notifications.length} alertas` : 'Sin alertas nuevas'}
+                  </p>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                      <p className="text-sm">¡Todo en orden!</p>
+                      <p className="text-xs">No hay alertas pendientes</p>
+                    </div>
+                  ) : (
+                    notifications.map((notif, idx) => (
+                      <div 
+                        key={notif.id || idx} 
+                        className="p-3 border-b last:border-b-0 hover:bg-muted/50 cursor-pointer"
+                        onClick={() => {
+                          setNotificationsOpen(false);
+                          if (notif.id === 'maint-pending') {
+                            navigate('/maintenance');
+                          } else {
+                            navigate('/services');
+                          }
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          {getNotificationIcon(notif.type)}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium">{notif.title}</p>
+                            <p className="text-xs text-muted-foreground">{notif.message}</p>
+                            <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              <span>{new Date(notif.date).toLocaleDateString('es')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {notifications.length > 0 && (
+                  <div className="p-2 border-t">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full text-xs"
+                      onClick={() => {
+                        setNotifications([]);
+                        setNotificationsOpen(false);
+                      }}
+                    >
+                      Marcar todas como leídas
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
