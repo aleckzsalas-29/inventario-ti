@@ -189,6 +189,15 @@ export default function NotificationsPage() {
                 />
               </div>
 
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Mantenimientos realizados</span>
+                <Switch
+                  data-testid="completed-toggle"
+                  checked={settings.maintenance_completed_enabled !== false}
+                  onCheckedChange={(v) => setSettings(p => ({ ...p, maintenance_completed_enabled: v }))}
+                />
+              </div>
+
               {settings.service_renewal_enabled && (
                 <div className="flex items-center gap-3 pl-4">
                   <Label className="text-sm text-muted-foreground whitespace-nowrap">Días antes del vencimiento:</Label>
@@ -334,6 +343,22 @@ export default function NotificationsPage() {
                     </span>
                   )}
                 </Button>
+
+                <Button
+                  onClick={() => sendManualNotification("maintenance_completed")}
+                  disabled={loading.maintenance_completed}
+                  variant="outline"
+                  className="w-full justify-start"
+                  data-testid="send-completed-btn"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                  {loading.maintenance_completed ? "Enviando..." : "Mantenimientos Realizados"}
+                  {alerts?.completed_maintenance > 0 && (
+                    <span className="ml-auto bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">
+                      {alerts.completed_maintenance}
+                    </span>
+                  )}
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -367,7 +392,11 @@ export default function NotificationsPage() {
                     <div>
                       <p className="text-sm font-medium">
                         {item.type === "automatic" ? "Envío automático" : "Envío manual"}
-                        {item.notification_type && ` - ${item.notification_type === 'maintenance_pending' ? 'Mantenimientos' : 'Servicios'}`}
+                        {item.notification_type && ` - ${
+                          item.notification_type === 'maintenance_pending' ? 'Mant. Pendientes' :
+                          item.notification_type === 'maintenance_completed' ? 'Mant. Realizados' :
+                          'Servicios'
+                        }`}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(item.sent_at).toLocaleString("es-MX")}

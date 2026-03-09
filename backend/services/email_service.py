@@ -120,6 +120,64 @@ def get_email_template(notification_type: str, data: dict) -> tuple:
         </html>
         '''
 
+    elif notification_type == 'maintenance_completed':
+        maintenances = data.get('maintenances', [])
+        subject = f"✅ {company_name}: Mantenimientos realizados"
+
+        maint_details = ''
+        for m in maintenances:
+            eq_code = m.get('equipment_code', 'N/A')
+            maint_type = m.get('maintenance_type', 'N/A')
+            technician = m.get('technician', 'No especificado')
+            diagnosis = m.get('problem_diagnosis', '')
+            solution = m.get('solution_applied', '')
+            repair_time = m.get('repair_time_hours', '')
+            completed_at = m.get('completed_at', m.get('created_at', ''))[:10]
+            description = m.get('description', '')
+
+            detail_rows = f'<strong>Descripción:</strong> {description}<br>'
+            if technician:
+                detail_rows += f'<strong>Técnico:</strong> {technician}<br>'
+            if diagnosis:
+                detail_rows += f'<strong>Diagnóstico:</strong> {diagnosis}<br>'
+            if solution:
+                detail_rows += f'<strong>Solución aplicada:</strong> {solution}<br>'
+            if repair_time:
+                detail_rows += f'<strong>Tiempo de reparación:</strong> {repair_time} horas<br>'
+            if m.get('parts_used'):
+                detail_rows += f'<strong>Materiales utilizados:</strong> {m.get("parts_used")}<br>'
+
+            maint_details += f'''
+            <div class="alert alert-success" style="margin-bottom:10px;">
+                <strong style="font-size:14px;">{eq_code} - {maint_type}</strong>
+                <span style="float:right;font-size:12px;color:#666;">Completado: {completed_at}</span>
+                <hr style="margin:8px 0;border:none;border-top:1px solid #ccc;">
+                <div style="font-size:13px;">{detail_rows}</div>
+            </div>
+            '''
+
+        html = f'''
+        <!DOCTYPE html>
+        <html>
+        <head>{base_style}</head>
+        <body>
+            <div class="container">
+                <div class="header">{logo_html}</div>
+                <div class="content">
+                    <h2>Mantenimientos Realizados</h2>
+                    <p>Se han completado <strong>{len(maintenances)}</strong> mantenimiento(s):</p>
+                    {maint_details}
+                    <p style="margin-top:15px;color:#666;">Este reporte incluye los mantenimientos finalizados recientemente.</p>
+                </div>
+                <div class="footer">
+                    Este es un mensaje automático de {company_name}.<br>
+                    {datetime.now().strftime('%d/%m/%Y %H:%M')}
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+
     elif notification_type == 'new_equipment':
         equipment = data.get('equipment', {})
         subject = f"✅ {company_name}: Nuevo equipo registrado"
@@ -296,6 +354,31 @@ async def send_automatic_notifications():
                             "type": "maintenance_pending",
                             "recipient": email_addr,
                             "count": len(maintenances)
+                        })
+                    await asyncio.sleep(0.1)
+
+        # Check completed maintenances (last 24 hours)
+        if notif_settings.get("maintenance_completed_enabled", True):
+            yesterday = datetime.now(timezone.utc).isoformat()[:10]
+            completed = await db.maintenance_logs.find(
+                {"status": "Finalizado", "completed_at": {"$gte": yesterday}},
+                {"_id": 0}
+            ).to_list(100)
+
+            if completed:
+                for m in completed:
+                    eq = await db.equipment.find_one({"id": m.get("equipment_id")}, {"_id": 0})
+                    m["equipment_code"] = eq.get("inventory_code", "N/A") if eq else "N/A"
+                data["maintenances"] = completed
+                subject, html = get_email_template("maintenance_completed", data)
+
+                for email_addr in recipients:
+                    result = await send_email(email_addr, subject, html)
+                    if result.get("status") == "success":
+                        notifications_sent.append({
+                            "type": "maintenance_completed",
+                            "recipient": email_addr,
+                            "count": len(completed)
                         })
                     await asyncio.sleep(0.1)
 

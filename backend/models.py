@@ -389,6 +389,7 @@ class NotificationSettings(BaseModel):
     service_renewal_enabled: bool = True
     service_renewal_days: int = 30
     maintenance_pending_enabled: bool = True
+    maintenance_completed_enabled: bool = True
     new_equipment_enabled: bool = True
     recipient_type: str = "all_users"
     custom_recipients: Optional[List[str]] = None

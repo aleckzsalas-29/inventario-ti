@@ -96,6 +96,7 @@ async def check_notifications(current_user: dict = Depends(get_current_user)):
     return {
         "pending_maintenance": pending_maintenance,
         "expiring_services": sorted(expiring_services, key=lambda x: x.get("days_until", 999)),
+        "completed_maintenance": await db.maintenance_logs.count_documents({"status": "Finalizado"}),
         "total_alerts": len(pending_maintenance) + len(expiring_services)
     }
 
@@ -169,6 +170,18 @@ async def send_notification_email(data: NotificationSendRequest, current_user: d
         template_data["services"] = sorted(expiring, key=lambda x: x.get("days_until", 999))
         if not expiring:
             return {"message": "No hay servicios próximos a renovar", "sent": 0}
+
+    elif data.notification_type == "maintenance_completed":
+        completed = await db.maintenance_logs.find(
+            {"status": "Finalizado"}, {"_id": 0}
+        ).sort("completed_at", -1).to_list(50)
+        for m in completed:
+            eq = await db.equipment.find_one({"id": m.get("equipment_id")}, {"_id": 0})
+            m["equipment_code"] = eq.get("inventory_code", "N/A") if eq else "N/A"
+        template_data["maintenances"] = completed
+        if not completed:
+            return {"message": "No hay mantenimientos realizados", "sent": 0}
+
     else:
         raise HTTPException(status_code=400, detail=f"Tipo de notificación no válido: {data.notification_type}")
 
