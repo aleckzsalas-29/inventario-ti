@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
@@ -7,14 +7,32 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Monitor, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '../lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [appSettings, setAppSettings] = useState({ company_name: '', logo_url: '' });
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Load settings
+    const cached = localStorage.getItem('app_settings');
+    if (cached) {
+      try {
+        setAppSettings(JSON.parse(cached));
+      } catch (e) {}
+    }
+    api.get('/settings').then(res => {
+      if (res.data) {
+        setAppSettings(res.data);
+        localStorage.setItem('app_settings', JSON.stringify(res.data));
+      }
+    }).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,6 +53,8 @@ export default function LoginPage() {
     }
   };
 
+  const companyName = appSettings.company_name || 'InventarioTI';
+
   return (
     <div className="min-h-screen flex" data-testid="login-page">
       {/* Left side - Image */}
@@ -49,10 +69,20 @@ export default function LoginPage() {
         </div>
         <div className="relative z-10 flex flex-col justify-end p-12 text-white">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center">
-              <Monitor className="w-6 h-6" />
-            </div>
-            <span className="text-2xl font-bold tracking-tight">InventarioTI</span>
+            {appSettings.logo_url ? (
+              <img 
+                src={appSettings.logo_url} 
+                alt="Logo" 
+                className="h-12 max-w-[180px] object-contain"
+              />
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center">
+                  <Monitor className="w-6 h-6" />
+                </div>
+                <span className="text-2xl font-bold tracking-tight">{companyName}</span>
+              </>
+            )}
           </div>
           <h1 className="text-4xl font-bold mb-4 leading-tight">
             Gestión inteligente de<br />activos tecnológicos
@@ -68,10 +98,20 @@ export default function LoginPage() {
         <div className="w-full max-w-md animate-fade-in">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-              <Monitor className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold">InventarioTI</span>
+            {appSettings.logo_url ? (
+              <img 
+                src={appSettings.logo_url} 
+                alt="Logo" 
+                className="h-10 max-w-[150px] object-contain"
+              />
+            ) : (
+              <>
+                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+                  <Monitor className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-bold">{companyName}</span>
+              </>
+            )}
           </div>
 
           <Card className="border-0 shadow-xl">
@@ -132,15 +172,6 @@ export default function LoginPage() {
                   )}
                 </Button>
               </form>
-
-              <div className="mt-6 p-4 rounded-lg bg-muted/50 border border-border/50">
-                <p className="text-sm text-muted-foreground mb-2">
-                  <strong>Credenciales de prueba:</strong>
-                </p>
-                <p className="text-sm font-mono text-muted-foreground">
-                  admin@inventarioti.com / admin123
-                </p>
-              </div>
             </CardContent>
           </Card>
         </div>

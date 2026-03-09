@@ -405,6 +405,12 @@ class ExternalServiceResponse(BaseModel):
     is_active: bool = True
     created_at: str
 
+# System Settings
+class SystemSettings(BaseModel):
+    company_name: Optional[str] = None
+    logo_url: Optional[str] = None
+    primary_color: Optional[str] = "#3b82f6"
+
 # CFDI Item for Mexico invoicing
 class CFDIItemCreate(BaseModel):
     description: str
@@ -3034,6 +3040,34 @@ async def get_available_permissions(current_user: dict = Depends(get_current_use
             {"key": "custom_fields.write", "label": "Gestionar Campos", "description": "Crear campos personalizados"}
         ]
     }
+
+# ==================== SETTINGS ENDPOINTS ====================
+
+@api_router.get("/settings")
+async def get_settings():
+    """Get system settings"""
+    settings = await db.settings.find_one({"type": "system"}, {"_id": 0})
+    if not settings:
+        return {"company_name": "", "logo_url": "", "primary_color": "#3b82f6"}
+    return settings
+
+@api_router.put("/settings")
+async def update_settings(settings: SystemSettings, current_user: dict = Depends(get_current_user)):
+    """Update system settings (admin only)"""
+    settings_dict = {
+        "type": "system",
+        "company_name": settings.company_name,
+        "logo_url": settings.logo_url,
+        "primary_color": settings.primary_color,
+        "updated_at": now_iso(),
+        "updated_by": current_user.get("id")
+    }
+    await db.settings.update_one(
+        {"type": "system"}, 
+        {"$set": settings_dict}, 
+        upsert=True
+    )
+    return {"message": "Settings updated successfully", **settings_dict}
 
 app.include_router(api_router)
 

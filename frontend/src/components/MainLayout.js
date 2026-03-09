@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -12,10 +12,11 @@ import {
 } from '../components/ui/dropdown-menu';
 import { 
   LayoutDashboard, Monitor, Building2, Users, UserCheck, Wrench, 
-  XCircle, Server, FileText, Receipt, Settings, LogOut, Menu, X,
-  Sun, Moon, Bell, ChevronDown, Search, SlidersHorizontal
+  Server, FileText, Receipt, LogOut, Menu, X,
+  Sun, Moon, Bell, ChevronDown, Search, SlidersHorizontal, FileDown, Settings
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import api from '../lib/api';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -27,8 +28,10 @@ const navItems = [
   { icon: Server, label: 'Servicios Externos', path: '/services' },
   { icon: FileText, label: 'Cotizaciones', path: '/quotations' },
   { icon: Receipt, label: 'Facturas', path: '/invoices' },
-  { icon: Settings, label: 'Usuarios', path: '/users' },
+  { icon: FileDown, label: 'Reportes', path: '/reports' },
+  { icon: Users, label: 'Usuarios', path: '/users' },
   { icon: SlidersHorizontal, label: 'Campos Personalizados', path: '/custom-fields' },
+  { icon: Settings, label: 'Configuración', path: '/settings' },
 ];
 
 export const MainLayout = () => {
@@ -37,6 +40,24 @@ export const MainLayout = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [appSettings, setAppSettings] = useState({ company_name: '', logo_url: '' });
+
+  useEffect(() => {
+    // Load settings from localStorage first for instant display
+    const cached = localStorage.getItem('app_settings');
+    if (cached) {
+      try {
+        setAppSettings(JSON.parse(cached));
+      } catch (e) {}
+    }
+    // Then fetch from API
+    api.get('/settings').then(res => {
+      if (res.data) {
+        setAppSettings(res.data);
+        localStorage.setItem('app_settings', JSON.stringify(res.data));
+      }
+    }).catch(() => {});
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -62,10 +83,21 @@ export const MainLayout = () => {
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b">
             <Link to="/" className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
+              {appSettings.logo_url ? (
+                <img 
+                  src={appSettings.logo_url} 
+                  alt="Logo" 
+                  className="h-9 max-w-[140px] object-contain"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div className={`w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center ${appSettings.logo_url ? 'hidden' : ''}`}>
                 <Monitor className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-lg">InventarioTI</span>
+              <span className="font-bold text-lg">{appSettings.company_name || 'InventarioTI'}</span>
             </Link>
             <Button 
               variant="ghost" 

@@ -19,6 +19,8 @@ import QuotationsPage from "./pages/QuotationsPage";
 import InvoicesPage from "./pages/InvoicesPage";
 import UsersPage from "./pages/UsersPage";
 import CustomFieldsPage from "./pages/CustomFieldsPage";
+import ReportsPage from "./pages/ReportsPage";
+import SettingsPage from "./pages/SettingsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -86,6 +88,8 @@ function AppRoutes() {
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="custom-fields" element={<CustomFieldsPage />} />
+        <Route path="reports" element={<ReportsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
       
       {/* Catch all */}
