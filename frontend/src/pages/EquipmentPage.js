@@ -97,16 +97,18 @@ export default function EquipmentPage() {
 
   const fetchData = async () => {
     try {
-      const [eqRes, compRes] = await Promise.all([
+      const [eqRes, compRes, empRes] = await Promise.all([
         equipmentAPI.getAll({ 
           company_id: filterCompany || undefined,
           status: filterStatus || undefined,
           equipment_type: filterType || undefined
         }),
-        companiesAPI.getAll()
+        companiesAPI.getAll(),
+        employeesAPI.getAll()
       ]);
       setEquipment(eqRes.data);
       setCompanies(compRes.data);
+      setEmployees(empRes.data);
     } catch (error) {
       toast.error('Error al cargar datos');
     } finally {
@@ -116,15 +118,25 @@ export default function EquipmentPage() {
 
   const fetchEmployees = async (companyId) => {
     if (!companyId) {
-      setEmployees([]);
       return;
     }
     try {
       const res = await employeesAPI.getAll({ company_id: companyId });
-      setEmployees(res.data);
+      // Merge with existing employees, avoiding duplicates
+      setEmployees(prev => {
+        const existingIds = new Set(prev.map(e => e.id));
+        const newEmps = res.data.filter(e => !existingIds.has(e.id));
+        return [...prev, ...newEmps];
+      });
     } catch (error) {
       console.error('Error loading employees:', error);
     }
+  };
+
+  const getEmployeeName = (employeeId) => {
+    if (!employeeId) return '-';
+    const employee = employees.find(e => e.id === employeeId);
+    return employee ? `${employee.first_name} ${employee.last_name}` : '-';
   };
 
   const fetchBranches = async (companyId) => {
@@ -902,6 +914,7 @@ export default function EquipmentPage() {
                     <th className="pb-3">Marca / Modelo</th>
                     <th className="pb-3">Serie</th>
                     <th className="pb-3">Empresa</th>
+                    <th className="pb-3">Asignado a</th>
                     <th className="pb-3">Estado</th>
                     <th className="pb-3 text-right">Acciones</th>
                   </tr>
@@ -914,6 +927,16 @@ export default function EquipmentPage() {
                       <td>{eq.brand} / {eq.model}</td>
                       <td className="font-mono text-sm">{eq.serial_number}</td>
                       <td>{eq.company_name}</td>
+                      <td>
+                        {eq.assigned_to ? (
+                          <div className="flex items-center gap-1">
+                            <User className="w-3 h-3 text-blue-500" />
+                            <span className="text-sm">{getEmployeeName(eq.assigned_to)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </td>
                       <td>
                         <span className={getStatusBadge(eq.status)}>
                           {eq.status}
