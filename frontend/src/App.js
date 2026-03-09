@@ -22,6 +22,7 @@ import UsersPage from "./pages/UsersPage";
 import CustomFieldsPage from "./pages/CustomFieldsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -91,6 +92,7 @@ function AppRoutes() {
         <Route path="custom-fields" element={<CustomFieldsPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
       </Route>
       
       {/* Catch all */}
