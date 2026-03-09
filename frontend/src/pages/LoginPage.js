@@ -9,12 +9,20 @@ import { Monitor, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
 
+const DEFAULT_BG = "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1920&q=80";
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [appSettings, setAppSettings] = useState({ company_name: '', logo_url: '' });
+  const [appSettings, setAppSettings] = useState({
+    company_name: '',
+    logo_url: '',
+    login_background_url: '',
+    login_title: '',
+    login_subtitle: ''
+  });
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -54,6 +62,9 @@ export default function LoginPage() {
   };
 
   const companyName = appSettings.company_name || 'InventarioTI';
+  const backgroundUrl = appSettings.login_background_url || DEFAULT_BG;
+  const loginTitle = appSettings.login_title || 'Gestión inteligente de activos tecnológicos';
+  const loginSubtitle = appSettings.login_subtitle || 'Control completo de equipos, asignaciones, servicios externos, cotizaciones y facturación en una sola plataforma.';
 
   return (
     <div className="min-h-screen flex" data-testid="login-page">
@@ -61,8 +72,8 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-slate-900">
           <img
-            src="https://images.unsplash.com/photo-1744868562210-fffb7fa882d9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwxfHxzZXJ2ZXIlMjByb29tJTIwZGF0YWNlbnRlciUyMHRlY2hub2xvZ3l8ZW58MHx8fHwxNzcwMjYwMzg2fDA&ixlib=rb-4.1.0&q=85"
-            alt="Server room"
+            src={backgroundUrl}
+            alt="Background"
             className="w-full h-full object-cover opacity-60"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent" />
@@ -74,6 +85,7 @@ export default function LoginPage() {
                 src={appSettings.logo_url} 
                 alt="Logo" 
                 className="h-12 max-w-[180px] object-contain"
+                onError={(e) => e.target.style.display = 'none'}
               />
             ) : (
               <>
@@ -83,12 +95,17 @@ export default function LoginPage() {
                 <span className="text-2xl font-bold tracking-tight">{companyName}</span>
               </>
             )}
+            {appSettings.logo_url && (
+              <span className="text-2xl font-bold tracking-tight">{companyName}</span>
+            )}
           </div>
           <h1 className="text-4xl font-bold mb-4 leading-tight">
-            Gestión inteligente de<br />activos tecnológicos
+            {loginTitle.split('\n').map((line, i) => (
+              <span key={i}>{line}<br /></span>
+            ))}
           </h1>
           <p className="text-lg text-slate-300 max-w-md">
-            Control completo de equipos, asignaciones, servicios externos, cotizaciones y facturación en una sola plataforma.
+            {loginSubtitle}
           </p>
         </div>
       </div>
@@ -103,15 +120,16 @@ export default function LoginPage() {
                 src={appSettings.logo_url} 
                 alt="Logo" 
                 className="h-10 max-w-[150px] object-contain"
+                onError={(e) => e.target.style.display = 'none'}
               />
             ) : (
               <>
                 <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
                   <Monitor className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-bold">{companyName}</span>
               </>
             )}
+            <span className="text-xl font-bold">{companyName}</span>
           </div>
 
           <Card className="border-0 shadow-xl">
@@ -174,6 +192,11 @@ export default function LoginPage() {
               </form>
             </CardContent>
           </Card>
+
+          {/* Footer */}
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            {companyName} © {new Date().getFullYear()}
+          </p>
         </div>
       </div>
     </div>

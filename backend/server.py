@@ -410,6 +410,9 @@ class SystemSettings(BaseModel):
     company_name: Optional[str] = None
     logo_url: Optional[str] = None
     primary_color: Optional[str] = "#3b82f6"
+    login_background_url: Optional[str] = None
+    login_title: Optional[str] = None
+    login_subtitle: Optional[str] = None
 
 # CFDI Item for Mexico invoicing
 class CFDIItemCreate(BaseModel):
@@ -3048,7 +3051,14 @@ async def get_settings():
     """Get system settings"""
     settings = await db.settings.find_one({"type": "system"}, {"_id": 0})
     if not settings:
-        return {"company_name": "", "logo_url": "", "primary_color": "#3b82f6"}
+        return {
+            "company_name": "", 
+            "logo_url": "", 
+            "primary_color": "#3b82f6",
+            "login_background_url": "",
+            "login_title": "",
+            "login_subtitle": ""
+        }
     return settings
 
 @api_router.put("/settings")
@@ -3059,6 +3069,9 @@ async def update_settings(settings: SystemSettings, current_user: dict = Depends
         "company_name": settings.company_name,
         "logo_url": settings.logo_url,
         "primary_color": settings.primary_color,
+        "login_background_url": settings.login_background_url,
+        "login_title": settings.login_title,
+        "login_subtitle": settings.login_subtitle,
         "updated_at": now_iso(),
         "updated_by": current_user.get("id")
     }
