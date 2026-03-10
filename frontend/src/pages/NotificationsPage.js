@@ -20,6 +20,38 @@ const SectionHeader = ({ icon: Icon, title, description }) => (
   </div>
 );
 
+function CustomRecipients({ recipients, newRecipient, setNewRecipient, onAdd, onRemove }) {
+  return (
+    <div className="space-y-3 mt-3 p-3 border rounded-lg bg-muted/30">
+      <div className="flex gap-2">
+        <Input
+          type="email"
+          placeholder="correo@ejemplo.com"
+          value={newRecipient}
+          onChange={(e) => setNewRecipient(e.target.value)}
+          data-testid="custom-recipient-input"
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onAdd(); } }}
+        />
+        <Button type="button" variant="outline" size="sm" data-testid="add-recipient-btn" onClick={onAdd}>
+          Agregar
+        </Button>
+      </div>
+      {recipients.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {recipients.map((email, idx) => (
+            <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+              {email}
+              <button type="button" className="hover:text-red-500 ml-1" onClick={() => onRemove(idx)}>x</button>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Agrega correos y haz clic en "Guardar Configuración"</p>
+      )}
+    </div>
+  );
+}
+
 export default function NotificationsPage() {
   const [settings, setSettings] = useState(null);
   const [schedulerStatus, setSchedulerStatus] = useState(null);
@@ -28,6 +60,25 @@ export default function NotificationsPage() {
   const [testEmail, setTestEmail] = useState("");
   const [loading, setLoading] = useState({});
   const [message, setMessage] = useState(null);
+
+  const [newRecipient, setNewRecipient] = useState("");
+
+  const addRecipient = () => {
+    if (newRecipient && newRecipient.includes("@")) {
+      const current = settings.custom_recipients || [];
+      if (!current.includes(newRecipient)) {
+        setSettings(p => ({ ...p, custom_recipients: [...current, newRecipient] }));
+      }
+      setNewRecipient("");
+    }
+  };
+
+  const removeRecipient = (idx) => {
+    setSettings(p => ({
+      ...p,
+      custom_recipients: (p.custom_recipients || []).filter((_, i) => i !== idx)
+    }));
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -229,6 +280,16 @@ export default function NotificationsPage() {
                   <SelectItem value="custom">Destinatarios personalizados</SelectItem>
                 </SelectContent>
               </Select>
+
+              {settings.recipient_type === "custom" && (
+                <CustomRecipients
+                  recipients={settings.custom_recipients || []}
+                  newRecipient={newRecipient}
+                  setNewRecipient={setNewRecipient}
+                  onAdd={addRecipient}
+                  onRemove={removeRecipient}
+                />
+              )}
             </div>
 
             <div className="flex gap-2">
