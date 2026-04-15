@@ -11,6 +11,118 @@ from helpers import sanitize_text
 router = APIRouter()
 
 
+def _add_equipment_detail(pdf, eq, assigned_name, custom_fields_list):
+    """Helper: renders a full equipment detail card in the PDF"""
+    page_width = 190
+    col = 95
+
+    # Header bar
+    pdf.set_fill_color(41, 128, 185)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 10)
+    header = f"  {eq.get('inventory_code', 'N/A')} - {eq.get('equipment_type', '')} | {eq.get('brand', '')} {eq.get('model', '')}"
+    pdf.cell(0, 8, sanitize_text(header), 0, 1, fill=True)
+    pdf.set_text_color(0, 0, 0)
+
+    # Info rows helper
+    def row(label, value, label2=None, value2=None):
+        if not value and not value2:
+            return
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.cell(28, 5, f"{label}:", "L", 0)
+        pdf.set_font("Helvetica", "", 8)
+        pdf.cell(col - 28, 5, sanitize_text(str(value or 'N/A'))[:45], 0, 0)
+        if label2:
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.cell(28, 5, f"{label2}:", 0, 0)
+            pdf.set_font("Helvetica", "", 8)
+            pdf.cell(0, 5, sanitize_text(str(value2 or 'N/A'))[:45], "R", 1)
+        else:
+            pdf.cell(0, 5, "", "R", 1)
+
+    # GENERAL
+    row("Codigo", eq.get('inventory_code'), "Tipo", eq.get('equipment_type'))
+    row("Marca", eq.get('brand'), "Modelo", eq.get('model'))
+    row("No. Serie", eq.get('serial_number'), "Estado", eq.get('status'))
+    if assigned_name:
+        row("Asignado a", assigned_name, None, None)
+    if eq.get('observations'):
+        row("Observaciones", eq.get('observations'), None, None)
+
+    # HARDWARE
+    has_hw = any([eq.get('processor_brand'), eq.get('ram_capacity'), eq.get('storage_capacity')])
+    if has_hw:
+        pdf.set_font("Helvetica", "BI", 8)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(0, 5, "  Hardware", "LR", 1, fill=True)
+        proc = f"{eq.get('processor_brand', '')} {eq.get('processor_model', '')}".strip()
+        if eq.get('processor_speed'):
+            proc += f" @ {eq['processor_speed']}"
+        ram = eq.get('ram_capacity', '')
+        if eq.get('ram_type'):
+            ram += f" ({eq['ram_type']})"
+        storage = ""
+        if eq.get('storage_capacity'):
+            storage = f"{eq.get('storage_type', '')} {eq['storage_capacity']}".strip()
+        row("Procesador", proc if proc else None, "RAM", ram if ram else None)
+        if storage:
+            row("Almacenamiento", storage, None, None)
+
+    # SOFTWARE
+    has_sw = any([eq.get('os_name'), eq.get('antivirus_name')])
+    if has_sw:
+        pdf.set_font("Helvetica", "BI", 8)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(0, 5, "  Software", "LR", 1, fill=True)
+        os_info = eq.get('os_name', '')
+        if eq.get('os_version'):
+            os_info += f" {eq['os_version']}"
+        row("Sist. Operativo", os_info if os_info else None, "Licencia SO", eq.get('os_license'))
+        if eq.get('antivirus_name'):
+            row("Antivirus", eq.get('antivirus_name'), "Vence AV", eq.get('antivirus_expiry'))
+
+    # NETWORK
+    has_net = any([eq.get('ip_address'), eq.get('mac_address')])
+    if has_net:
+        pdf.set_font("Helvetica", "BI", 8)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(0, 5, "  Red", "LR", 1, fill=True)
+        row("IP", eq.get('ip_address'), "MAC", eq.get('mac_address'))
+
+    # CREDENTIALS
+    has_cred = any([eq.get('windows_user'), eq.get('email_account'), eq.get('cloud_user')])
+    if has_cred:
+        pdf.set_font("Helvetica", "BI", 8)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(0, 5, "  Credenciales", "LR", 1, fill=True)
+        if eq.get('windows_user'):
+            row("Usuario Win", eq.get('windows_user'), "Pass Win", eq.get('windows_password'))
+        if eq.get('email_account'):
+            row("Email", eq.get('email_account'), "Pass Email", eq.get('email_password'))
+        if eq.get('cloud_user'):
+            row("Cloud", eq.get('cloud_user'), "Pass Cloud", eq.get('cloud_password'))
+
+    # CUSTOM FIELDS
+    cf_values = eq.get("custom_fields") or {}
+    has_cf = False
+    for cf in custom_fields_list:
+        val = cf_values.get(cf.get("name"), "")
+        if val:
+            if not has_cf:
+                pdf.set_font("Helvetica", "BI", 8)
+                pdf.set_fill_color(240, 240, 240)
+                pdf.cell(0, 5, "  Campos Adicionales", "LR", 1, fill=True)
+                has_cf = True
+            row(cf.get('name', ''), val, None, None)
+
+    # Bottom border
+    pdf.cell(0, 1, "", "LRB", 1)
+    pdf.ln(4)
+
+    if pdf.get_y() > 250:
+        pdf.add_page()
+
+
 @router.get("/reports/equipment/pdf")
 async def generate_equipment_report_pdf(company_id: Optional[str] = None, status: Optional[str] = None, include_custom_fields: bool = False, current_user: dict = Depends(get_current_user)):
     query = {}
@@ -28,37 +140,42 @@ async def generate_equipment_report_pdf(company_id: Optional[str] = None, status
             company_name = company.get("name", "")
             logo_url = company.get("logo_url")
 
-    # Fetch employee names for assigned equipment
-    employee_ids = [eq.get("assigned_to") for eq in equipment_list if eq.get("assigned_to")]
+    # Fetch employee names
+    employee_ids = list(set([eq.get("assigned_to") for eq in equipment_list if eq.get("assigned_to")]))
     employees = {}
     if employee_ids:
         emp_list = await db.employees.find({"id": {"$in": employee_ids}}, {"_id": 0}).to_list(500)
         employees = {e["id"]: f"{e.get('first_name', '')} {e.get('last_name', '')}" for e in emp_list}
 
+    # Fetch custom fields for equipment
+    eq_custom_fields = await db.custom_fields.find({"entity_type": "equipment", "is_active": {"$ne": False}}, {"_id": 0}).to_list(50)
+
     pdf = ModernPDF(title="Inventario de Equipos", company_name=company_name, logo_url=logo_url)
     pdf.alias_nb_pages()
     pdf.add_page()
 
-    headers = ["Codigo", "Tipo", "Marca", "Modelo", "Serie", "Estado", "Asignado a"]
-    widths = [25, 25, 25, 25, 30, 25, 35]
-    pdf.add_table_header(headers, widths)
+    # Summary
+    status_counts = {}
+    type_counts = {}
+    for eq in equipment_list:
+        s = eq.get("status", "Sin estado")
+        t = eq.get("equipment_type", "Sin tipo")
+        status_counts[s] = status_counts.get(s, 0) + 1
+        type_counts[t] = type_counts.get(t, 0) + 1
 
-    for i, eq in enumerate(equipment_list):
-        assigned_name = employees.get(eq.get("assigned_to", ""), "Sin asignar")[:18]
-        data = [
-            str(eq.get("inventory_code", ""))[:12],
-            str(eq.get("equipment_type", ""))[:12],
-            str(eq.get("brand", ""))[:12],
-            str(eq.get("model", ""))[:12],
-            str(eq.get("serial_number", ""))[:15],
-            str(eq.get("status", ""))[:12],
-            assigned_name
-        ]
-        pdf.add_table_row(data, widths, alternate=(i % 2 == 1))
-
+    pdf.section_title(f"RESUMEN ({len(equipment_list)} equipos)")
+    pdf.set_font("Helvetica", "", 9)
+    summary_parts = [f"{s}: {c}" for s, c in sorted(status_counts.items())]
+    pdf.cell(0, 6, "Por estado: " + " | ".join(summary_parts), ln=True)
+    type_parts = [f"{t}: {c}" for t, c in sorted(type_counts.items())]
+    pdf.cell(0, 6, "Por tipo: " + " | ".join(type_parts), ln=True)
     pdf.ln(5)
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.cell(0, 8, f"Total de equipos: {len(equipment_list)}", ln=True, align="R")
+
+    # Detail per equipment
+    pdf.section_title("DETALLE DE EQUIPOS")
+    for eq in equipment_list:
+        assigned_name = employees.get(eq.get("assigned_to", ""), "")
+        _add_equipment_detail(pdf, eq, assigned_name, eq_custom_fields)
 
     pdf_bytes = pdf.output()
     filename = f"inventario_equipos_{datetime.now().strftime('%Y%m%d')}.pdf"
@@ -73,24 +190,55 @@ async def generate_equipment_logs_pdf(equipment_id: str, current_user: dict = De
         raise HTTPException(status_code=404, detail="Equipo no encontrado")
     logs = await db.equipment_logs.find({"equipment_id": equipment_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
 
-    pdf = FPDF()
+    company_name = ""
+    logo_url = None
+    if eq.get("company_id"):
+        company = await db.companies.find_one({"id": eq["company_id"]}, {"_id": 0})
+        if company:
+            company_name = company.get("name", "")
+            logo_url = company.get("logo_url")
+
+    assigned_employee = ""
+    if eq.get("assigned_to"):
+        emp = await db.employees.find_one({"id": eq["assigned_to"]}, {"_id": 0})
+        if emp:
+            assigned_employee = f"{emp.get('first_name', '')} {emp.get('last_name', '')}"
+
+    # Fetch custom fields for full equipment detail
+    eq_custom_fields = await db.custom_fields.find({"entity_type": "equipment", "is_active": {"$ne": False}}, {"_id": 0}).to_list(50)
+
+    pdf = ModernPDF(title="Bitacora de Equipo", company_name=company_name, logo_url=logo_url)
+    pdf.alias_nb_pages()
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, f"Bitacora de Equipo: {eq.get('inventory_code', 'N/A')}", ln=True, align="C")
-    pdf.set_font("Helvetica", "", 10)
-    pdf.cell(0, 6, f"Tipo: {eq.get('equipment_type', 'N/A')} | Marca: {eq.get('brand', 'N/A')} {eq.get('model', 'N/A')}", ln=True, align="C")
-    pdf.ln(10)
-    pdf.set_font("Helvetica", "B", 9)
-    pdf.cell(35, 8, "Fecha", 1)
-    pdf.cell(30, 8, "Tipo", 1)
-    pdf.cell(125, 8, "Descripcion", 1)
-    pdf.ln()
-    pdf.set_font("Helvetica", "", 8)
-    for log in logs:
-        pdf.cell(35, 7, str(log.get("created_at", ""))[:19].replace("T", " "), 1)
-        pdf.cell(30, 7, str(log.get("log_type", "")), 1)
-        pdf.cell(125, 7, sanitize_text(str(log.get("description", "")))[:70], 1)
-        pdf.ln()
+
+    # Full equipment detail
+    _add_equipment_detail(pdf, eq, assigned_employee, eq_custom_fields)
+
+    # Logs table
+    pdf.section_title(f"HISTORIAL DE BITACORA ({len(logs)} registros)")
+    if not logs:
+        pdf.set_font("Helvetica", "I", 10)
+        pdf.cell(0, 10, "No hay registros en la bitacora", ln=True, align="C")
+    else:
+        headers = ["Fecha", "Tipo", "Descripcion", "Realizado por"]
+        widths = [35, 25, 100, 30]
+        pdf.add_table_header(headers, widths)
+
+        user_ids = list(set([l.get("performed_by") for l in logs if l.get("performed_by")]))
+        users_map = {}
+        if user_ids:
+            u_list = await db.users.find({"id": {"$in": user_ids}}, {"_id": 0, "id": 1, "name": 1}).to_list(50)
+            users_map = {u["id"]: u.get("name", "") for u in u_list}
+
+        for i, log in enumerate(logs):
+            user_name = users_map.get(log.get("performed_by", ""), "")[:15]
+            data = [
+                str(log.get("created_at", ""))[:16].replace("T", " "),
+                str(log.get("log_type", "")),
+                sanitize_text(str(log.get("description", "")))[:55],
+                user_name
+            ]
+            pdf.add_table_row(data, widths, alternate=(i % 2 == 1))
 
     pdf_bytes = pdf.output()
     return Response(content=bytes(pdf_bytes), media_type="application/pdf",
