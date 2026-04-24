@@ -12,6 +12,14 @@ TICKET_PRIORITIES = ["Baja", "Media", "Alta", "Critica"]
 TICKET_CATEGORIES = ["General", "Hardware", "Software", "Red", "Accesos", "Email", "Impresora", "Otro"]
 
 
+async def _is_solicitante(user: dict) -> bool:
+    if user.get("role_id"):
+        role = await db.roles.find_one({"id": user["role_id"]}, {"_id": 0, "name": 1})
+        if role and role.get("name") == "Solicitante":
+            return True
+    return False
+
+
 async def _enrich_ticket(ticket: dict) -> dict:
     if ticket.get("equipment_id"):
         eq = await db.equipment.find_one({"id": ticket["equipment_id"]}, {"_id": 0, "inventory_code": 1})
@@ -46,6 +54,9 @@ async def get_tickets(
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
+    # Solicitante only sees their own tickets
+    if await _is_solicitante(current_user):
+        query["created_by"] = current_user.get("id")
     if status:
         query["status"] = status
     if priority:
@@ -65,11 +76,15 @@ async def get_tickets(
 
 @router.get("/tickets/stats")
 async def get_ticket_stats(current_user: dict = Depends(get_current_user)):
-    total = await db.tickets.count_documents({})
-    open_count = await db.tickets.count_documents({"status": "Abierto"})
-    in_progress = await db.tickets.count_documents({"status": "En Proceso"})
-    resolved = await db.tickets.count_documents({"status": "Resuelto"})
-    closed = await db.tickets.count_documents({"status": "Cerrado"})
+    base_query = {}
+    if await _is_solicitante(current_user):
+        base_query["created_by"] = current_user.get("id")
+
+    total = await db.tickets.count_documents(base_query)
+    open_count = await db.tickets.count_documents({**base_query, "status": "Abierto"})
+    in_progress = await db.tickets.count_documents({**base_query, "status": "En Proceso"})
+    resolved = await db.tickets.count_documents({**base_query, "status": "Resuelto"})
+    closed = await db.tickets.count_documents({**base_query, "status": "Cerrado"})
 
     by_priority = {}
     for p in TICKET_PRIORITIES:
@@ -91,6 +106,29 @@ async def get_ticket_stats(current_user: dict = Depends(get_current_user)):
         "by_priority": by_priority,
         "by_category": by_category
     }
+
+
+# ==================== STATIC ROUTES (before {ticket_id}) ====================
+
+@router.get("/tickets/options/constants")
+async def get_ticket_constants(current_user: dict = Depends(get_current_user)):
+    return {
+        "statuses": TICKET_STATUSES,
+        "priorities": TICKET_PRIORITIES,
+        "categories": TICKET_CATEGORIES
+    }
+
+
+@router.get("/tickets/my-equipment")
+async def get_my_assigned_equipment(current_user: dict = Depends(get_current_user)):
+    """Get equipment assigned to the current user (for solicitantes)"""
+    eq_ids = current_user.get("assigned_equipment_ids", [])
+    if not eq_ids:
+        return []
+    equipment = await db.equipment.find(
+        {"id": {"$in": eq_ids}}, {"_id": 0, "id": 1, "inventory_code": 1, "equipment_type": 1, "brand": 1, "model": 1}
+    ).to_list(50)
+    return equipment
 
 
 @router.get("/tickets/{ticket_id}", response_model=TicketResponse)
@@ -188,12 +226,7 @@ async def create_ticket_comment(ticket_id: str, data: TicketCommentCreate, curre
     return TicketCommentResponse(**comment)
 
 
-# ==================== CONSTANTS ====================
+# (moved to before {ticket_id} routes)
 
-@router.get("/tickets/options/constants")
-async def get_ticket_constants(current_user: dict = Depends(get_current_user)):
-    return {
-        "statuses": TICKET_STATUSES,
-        "priorities": TICKET_PRIORITIES,
-        "categories": TICKET_CATEGORIES
-    }
+
+# (moved to before {ticket_id} routes)

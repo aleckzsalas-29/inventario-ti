@@ -37,6 +37,7 @@ async def login(credentials: UserLogin):
             id=user["id"], email=user["email"], name=user["name"],
             role_id=user.get("role_id"), role_name=role_name,
             company_id=user.get("company_id"), company_name=company_name,
+            assigned_equipment_ids=user.get("assigned_equipment_ids", []),
             is_active=user.get("is_active", True), created_at=user["created_at"]
         )
     )
@@ -58,6 +59,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         id=current_user["id"], email=current_user["email"], name=current_user["name"],
         role_id=current_user.get("role_id"), role_name=role_name,
         company_id=current_user.get("company_id"), company_name=company_name,
+        assigned_equipment_ids=current_user.get("assigned_equipment_ids", []),
         is_active=current_user.get("is_active", True), created_at=current_user["created_at"]
     )
 
@@ -83,6 +85,7 @@ async def get_users(current_user: dict = Depends(get_current_user)):
             id=user["id"], email=user["email"], name=user["name"],
             role_id=user.get("role_id"), role_name=role_name,
             company_id=user.get("company_id"), company_name=company_name,
+            assigned_equipment_ids=user.get("assigned_equipment_ids", []),
             is_active=user.get("is_active", True), created_at=user["created_at"]
         ))
     return result
@@ -100,6 +103,7 @@ async def create_user(user_data: UserCreate, current_user: dict = Depends(get_cu
         "id": generate_id(), "email": user_data.email,
         "password": hash_password(user_data.password), "name": user_data.name,
         "role_id": user_data.role_id, "company_id": user_data.company_id,
+        "assigned_equipment_ids": user_data.assigned_equipment_ids or [],
         "is_active": True, "created_at": now_iso()
     }
     await db.users.insert_one(user)
@@ -117,6 +121,7 @@ async def create_user(user_data: UserCreate, current_user: dict = Depends(get_cu
         id=user["id"], email=user["email"], name=user["name"],
         role_id=user.get("role_id"), role_name=role_name,
         company_id=user.get("company_id"), company_name=company_name,
+        assigned_equipment_ids=user.get("assigned_equipment_ids", []),
         is_active=True, created_at=user["created_at"]
     )
 
@@ -126,7 +131,8 @@ async def update_user(user_id: str, user_data: UserCreate, current_user: dict = 
     await check_permission(current_user, "users.write")
 
     update_data = {"email": user_data.email, "name": user_data.name,
-                   "role_id": user_data.role_id, "company_id": user_data.company_id}
+                   "role_id": user_data.role_id, "company_id": user_data.company_id,
+                   "assigned_equipment_ids": user_data.assigned_equipment_ids or []}
     if user_data.password:
         update_data["password"] = hash_password(user_data.password)
 
@@ -148,6 +154,7 @@ async def update_user(user_id: str, user_data: UserCreate, current_user: dict = 
         id=user["id"], email=user["email"], name=user["name"],
         role_id=user.get("role_id"), role_name=role_name,
         company_id=user.get("company_id"), company_name=company_name,
+        assigned_equipment_ids=user.get("assigned_equipment_ids", []),
         is_active=user.get("is_active", True), created_at=user["created_at"]
     )
 

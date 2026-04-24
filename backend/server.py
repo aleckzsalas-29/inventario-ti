@@ -66,6 +66,18 @@ async def init_default_roles():
         }
         await db.roles.insert_one(viewer_role)
 
+    solicitante_role = await db.roles.find_one({"name": "Solicitante"})
+    if not solicitante_role:
+        solicitante_role = {
+            "id": generate_id(),
+            "name": "Solicitante",
+            "permissions": ["tickets.read", "tickets.write"],
+            "description": "Solo puede crear y ver sus propios tickets de soporte",
+            "is_system": True
+        }
+        await db.roles.insert_one(solicitante_role)
+        logger.info("Default Solicitante role created")
+
     admin_user = await db.users.find_one({"email": "admin@example.com"})
     if not admin_user:
         admin_role_doc = await db.roles.find_one({"name": "Administrador"}, {"_id": 0})

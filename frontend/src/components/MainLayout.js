@@ -25,21 +25,25 @@ import { cn } from '../lib/utils';
 import api from '../lib/api';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: Monitor, label: 'Equipos', path: '/equipment' },
-  { icon: Building2, label: 'Empresas', path: '/companies' },
-  { icon: Users, label: 'Empleados', path: '/employees' },
-  { icon: UserCheck, label: 'Asignaciones', path: '/assignments' },
-  { icon: Wrench, label: 'Mantenimientos', path: '/maintenance' },
-  { icon: Ticket, label: 'Tickets Soporte', path: '/tickets' },
-  { icon: Server, label: 'Servicios Externos', path: '/services' },
-  { icon: FileText, label: 'Cotizaciones', path: '/quotations' },
-  { icon: Receipt, label: 'Facturas', path: '/invoices' },
-  { icon: FileDown, label: 'Reportes', path: '/reports' },
-  { icon: Mail, label: 'Notificaciones Email', path: '/notifications' },
-  { icon: Users, label: 'Usuarios', path: '/users' },
-  { icon: SlidersHorizontal, label: 'Campos Personalizados', path: '/custom-fields' },
-  { icon: Settings, label: 'Configuración', path: '/settings' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/', roles: null },
+  { icon: Monitor, label: 'Equipos', path: '/equipment', roles: null },
+  { icon: Building2, label: 'Empresas', path: '/companies', roles: null },
+  { icon: Users, label: 'Empleados', path: '/employees', roles: null },
+  { icon: UserCheck, label: 'Asignaciones', path: '/assignments', roles: null },
+  { icon: Wrench, label: 'Mantenimientos', path: '/maintenance', roles: null },
+  { icon: Ticket, label: 'Tickets Soporte', path: '/tickets', roles: null },
+  { icon: Server, label: 'Servicios Externos', path: '/services', roles: null },
+  { icon: FileText, label: 'Cotizaciones', path: '/quotations', roles: null },
+  { icon: Receipt, label: 'Facturas', path: '/invoices', roles: null },
+  { icon: FileDown, label: 'Reportes', path: '/reports', roles: null },
+  { icon: Mail, label: 'Notificaciones Email', path: '/notifications', roles: null },
+  { icon: Users, label: 'Usuarios', path: '/users', roles: null },
+  { icon: SlidersHorizontal, label: 'Campos Personalizados', path: '/custom-fields', roles: null },
+  { icon: Settings, label: 'Configuración', path: '/settings', roles: null },
+];
+
+const solicitanteNavItems = [
+  { icon: Ticket, label: 'Mis Tickets', path: '/tickets', roles: ['Solicitante'] },
 ];
 
 export const MainLayout = () => {
@@ -181,7 +185,7 @@ export const MainLayout = () => {
 
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            {navItems.map((item) => {
+            {(user?.role_name === 'Solicitante' ? solicitanteNavItems : navItems).map((item) => {
               const isActive = location.pathname === item.path || 
                 (item.path !== '/' && location.pathname.startsWith(item.path));
               return (

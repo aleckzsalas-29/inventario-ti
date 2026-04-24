@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ticketsAPI, equipmentAPI, usersAPI } from '../lib/api';
+import api from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -58,7 +60,7 @@ function TicketStats({ stats }) {
 
 // ==================== TICKET DETAIL DIALOG ====================
 
-function TicketDetail({ ticket, onClose, onUpdate, users }) {
+function TicketDetail({ ticket, onClose, onUpdate, users, isSolicitante }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
@@ -154,18 +156,26 @@ function TicketDetail({ ticket, onClose, onUpdate, users }) {
               <p className="font-medium">{ticket.equipment_code}</p>
             </div>
           )}
-          <div>
-            <p className="text-muted-foreground">Tecnico Asignado</p>
-            <Select value={ticket.assigned_to || "none"} onValueChange={(v) => handleAssign(v === "none" ? null : v)}>
-              <SelectTrigger className="h-8 mt-1" data-testid="assign-tech-select">
-                <SelectValue placeholder="Sin asignar" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin asignar</SelectItem>
-                {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          {!isSolicitante && (
+            <div>
+              <p className="text-muted-foreground">Tecnico Asignado</p>
+              <Select value={ticket.assigned_to || "none"} onValueChange={(v) => handleAssign(v === "none" ? null : v)}>
+                <SelectTrigger className="h-8 mt-1" data-testid="assign-tech-select">
+                  <SelectValue placeholder="Sin asignar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin asignar</SelectItem>
+                  {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {isSolicitante && ticket.assigned_to_name && (
+            <div>
+              <p className="text-muted-foreground">Tecnico Asignado</p>
+              <p className="font-medium">{ticket.assigned_to_name}</p>
+            </div>
+          )}
         </div>
 
         {/* Resolution notes */}
@@ -176,8 +186,8 @@ function TicketDetail({ ticket, onClose, onUpdate, users }) {
           </div>
         )}
 
-        {/* Status actions */}
-        {ticket.status !== 'Cerrado' && (
+        {/* Status actions - only for non-solicitantes */}
+        {!isSolicitante && ticket.status !== 'Cerrado' && (
           <div className="flex gap-2">
             {ticket.status === 'Abierto' && (
               <Button size="sm" onClick={() => handleStatusChange('En Proceso')} disabled={updating} data-testid="ticket-start-btn">
@@ -235,7 +245,7 @@ function TicketDetail({ ticket, onClose, onUpdate, users }) {
 
 // ==================== CREATE TICKET FORM ====================
 
-function CreateTicketForm({ equipment, users, onSubmit, saving, onCancel }) {
+function CreateTicketForm({ equipment, users, onSubmit, saving, onCancel, isSolicitante }) {
   const [form, setForm] = useState({
     title: '', description: '', priority: 'Media', category: 'General',
     equipment_id: '', assigned_to: ''
@@ -295,11 +305,11 @@ function CreateTicketForm({ equipment, users, onSubmit, saving, onCancel }) {
           </Select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className={isSolicitante ? "" : "grid grid-cols-2 gap-4"}>
         <div className="space-y-2">
-          <Label>Equipo (opcional)</Label>
+          <Label>{isSolicitante ? 'Mi Equipo' : 'Equipo (opcional)'}</Label>
           <Select value={form.equipment_id || "none"} onValueChange={(v) => setForm({ ...form, equipment_id: v === "none" ? "" : v })}>
-            <SelectTrigger><SelectValue placeholder="Sin equipo" /></SelectTrigger>
+            <SelectTrigger data-testid="ticket-equipment-select"><SelectValue placeholder="Sin equipo" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Sin equipo</SelectItem>
               {equipment.map(eq => (
@@ -308,8 +318,9 @@ function CreateTicketForm({ equipment, users, onSubmit, saving, onCancel }) {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>Asignar a (opcional)</Label>
+        {!isSolicitante && (
+          <div className="space-y-2">
+            <Label>Asignar a (opcional)</Label>
           <Select value={form.assigned_to || "none"} onValueChange={(v) => setForm({ ...form, assigned_to: v === "none" ? "" : v })}>
             <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
             <SelectContent>
@@ -318,6 +329,7 @@ function CreateTicketForm({ equipment, users, onSubmit, saving, onCancel }) {
             </SelectContent>
           </Select>
         </div>
+        )}
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
@@ -377,6 +389,8 @@ function TicketRow({ ticket, onClick }) {
 // ==================== MAIN PAGE ====================
 
 export default function TicketsPage() {
+  const { user } = useAuth();
+  const isSolicitante = user?.role_name === 'Solicitante';
   const [tickets, setTickets] = useState([]);
   const [stats, setStats] = useState(null);
   const [equipment, setEquipment] = useState([]);
@@ -398,12 +412,20 @@ export default function TicketsPage() {
       if (filterStatus) params.status = filterStatus;
       if (filterPriority) params.priority = filterPriority;
 
-      const [ticketsRes, statsRes, eqRes, usersRes] = await Promise.all([
+      const promises = [
         ticketsAPI.getAll(params),
         ticketsAPI.getStats(),
-        equipmentAPI.getAll(),
-        usersAPI.getAll()
-      ]);
+      ];
+
+      if (isSolicitante) {
+        promises.push(api.get('/tickets/my-equipment'));
+        promises.push(Promise.resolve({ data: [] }));
+      } else {
+        promises.push(equipmentAPI.getAll());
+        promises.push(usersAPI.getAll());
+      }
+
+      const [ticketsRes, statsRes, eqRes, usersRes] = await Promise.all(promises);
       setTickets(ticketsRes.data);
       setStats(statsRes.data);
       setEquipment(eqRes.data);
@@ -460,8 +482,8 @@ export default function TicketsPage() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Tickets de Soporte</h1>
-          <p className="text-muted-foreground">Gestiona solicitudes y problemas de TI</p>
+          <h1 className="page-title">{isSolicitante ? 'Mis Tickets' : 'Tickets de Soporte'}</h1>
+          <p className="text-muted-foreground">{isSolicitante ? 'Crea y consulta tus solicitudes de soporte' : 'Gestiona solicitudes y problemas de TI'}</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -478,6 +500,7 @@ export default function TicketsPage() {
               onSubmit={handleCreate}
               saving={saving}
               onCancel={() => setDialogOpen(false)}
+              isSolicitante={isSolicitante}
             />
           </DialogContent>
         </Dialog>
@@ -562,6 +585,7 @@ export default function TicketsPage() {
           onClose={() => setDetailOpen(false)}
           onUpdate={handleDetailUpdate}
           users={users}
+          isSolicitante={isSolicitante}
         />
       </Dialog>
     </div>

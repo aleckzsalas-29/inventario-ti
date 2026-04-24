@@ -10,6 +10,7 @@ class UserCreate(BaseModel):
     name: str
     role_id: Optional[str] = None
     company_id: Optional[str] = None
+    assigned_equipment_ids: Optional[List[str]] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -24,6 +25,7 @@ class UserResponse(BaseModel):
     role_name: Optional[str] = None
     company_id: Optional[str] = None
     company_name: Optional[str] = None
+    assigned_equipment_ids: Optional[List[str]] = None
     is_active: bool = True
     created_at: str
 

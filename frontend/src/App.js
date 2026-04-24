@@ -25,7 +25,14 @@ import SettingsPage from "./pages/SettingsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import TicketsPage from "./pages/TicketsPage";
 
-// Protected Route Component
+// Redirect solicitante to tickets
+const DashboardOrRedirect = () => {
+  const { user } = useAuth();
+  if (user?.role_name === 'Solicitante') {
+    return <Navigate to="/tickets" replace />;
+  }
+  return <DashboardPage />;
+};
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
@@ -79,7 +86,7 @@ function AppRoutes() {
           <MainLayout />
         </ProtectedRoute>
       }>
-        <Route index element={<DashboardPage />} />
+        <Route index element={<DashboardOrRedirect />} />
         <Route path="equipment" element={<EquipmentPage />} />
         <Route path="equipment/:id" element={<EquipmentDetailPage />} />
         <Route path="companies" element={<CompaniesPage />} />

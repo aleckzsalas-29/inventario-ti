@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 11: Solicitante role end-to-end verification. Backend 12/12 pytest pass in /app/backend/tests/test_solicitante_role.py: (1) Solicitante role seeded with permissions ['tickets.read','tickets.write'] and is_system=true. (2) assigned_equipment_ids stored on user create (UserCreate->GET roundtrip confirmed LAP-001 id persisted, role_name=Solicitante). (3) GET /tickets as solicitante returns ONLY tickets where created_by=sol_user.id (iterated every ticket). (4) GET /tickets/stats as solicitante: total matches filtered listing count. (5) GET /tickets/my-equipment as solicitante returns [{id=f1c1a368..., inventory_code=LAP-001,...}]; as admin returns [] (no assigned_equipment_ids). (6) GET /tickets as admin returns ALL tickets; stats.total matches listing. (7) POST /tickets as solicitante: created_by stamped = sol user id, status=Abierto, equipment_id persisted; solicitante can POST comment and it appears with author_id=sol user id. (8) Static routes /tickets/options/constants and /tickets/my-equipment are matched BEFORE /tickets/{ticket_id} (no 'Ticket no encontrado' collision). Frontend (Playwright UI) verified: (A) Solicitante login redirects / -> /tickets via DashboardOrRedirect. (B) Sidebar shows ONLY 'Mis Tickets' (1 nav item vs 15 for admin). (C) Page title='Mis Tickets' for solicitante vs 'Tickets de Soporte' for admin. (D) Create dialog: equipment dropdown shows only 'Sin equipo' + 'LAP-001 - Laptop' (no other equipment). 'Asignar a' field hidden for solicitante in create form. (E) Created ticket appears in list; ticket detail hides assign-tech-select, ticket-start-btn, ticket-resolve-btn, ticket-close-btn. Admin detail shows assign-tech-select + ticket-start-btn + ticket-resolve-btn. (F) Solicitante can add comments - comment visible after post. (G) Admin /users page lists Juan Soporte (Solicitante) and TechCorp S.A. company.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_solicitante_role.py",
+    "/app/test_reports/pytest/pytest_solicitante_role.xml"
+  ],
+  "action_items": [
+    "DELETE /api/tickets/{id} has NO role check - a solicitante can DELETE their own (or anyone's) ticket directly via API. Backend filter in GET is enforced, but ticket_routes.delete_ticket only depends on get_current_user with no _is_solicitante or check_permission guard. Recommend: block delete for solicitantes, or require tickets.admin permission.",
+    "PUT /api/tickets/{ticket_id} also has NO role check - a solicitante could call PUT to change status/assigned_to on any ticket id (since no created_by enforcement on update). Recommend: if _is_solicitante, restrict updates to own ticket AND to a safe subset of fields (title/description) or block entirely.",
+    "GET /api/tickets/{ticket_id} (single) and /api/tickets/{ticket_id}/comments do NOT filter by created_by for solicitantes - if a solicitante knows another ticket's id, they can read it + its comments. Recommend: in get_ticket and get_ticket_comments, enforce created_by == current_user.id when _is_solicitante.",
+    "TicketResponse never exposes _id but admin sees tickets with unsanitized created_by/assigned_to which is fine; just noting the pattern is consistent. No action.",
+    "In TicketsPage.js handleDetailUpdate does an extra network round-trip even if update fails silently. Minor."
+  ],
+  "critical_code_review_comments": [
+    "SECURITY: /api/tickets/{ticket_id} GET and DELETE and PUT and POST /comments have NO tenant/owner check for Solicitante. Only list (GET /tickets) and stats filter by created_by. A solicitante can thus read/update/delete/comment on ANY ticket by guessing or iterating UUIDs. Add _is_solicitante(current_user) ownership guard in get_ticket, update_ticket, delete_ticket, and ticket_comments endpoints.",
+    "ticket_routes._next_ticket_number sorts by created_at desc then parses max; race-prone under concurrent creates. Use atomic counter doc instead.",
+    "UserCreate model reused for PUT /users/{user_id} forces password as required field (field has no default) - since update_user checks 'if user_data.password' as truthy, caller must still pass password=''. The existing admin UsersPage.js likely always sends password but this is implicit coupling worth splitting into UserUpdate model with all fields optional.",
+    "auth_routes.create_user does not validate role_id or company_id existence - admin could assign a ghost role_id. Add existence checks.",
+    "TicketsPage.js fetchData triggers on [filterStatus, filterPriority] but not on auth user - if user switches role via hot reload, equipment list could be stale. Minor."
+  ],
+  "updated_files": ["/app/backend/tests/test_solicitante_role.py", "/app/test_reports/iteration_11.json"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@example.com / adminpassword ; usuario.soporte@test.com / soporte123",
+  "seed_data_creation": "Test created+deleted one solicitante ticket (TK-0003 'TEST UI Solicitante Ticket') via UI, cleaned at end. Backend test created and soft-deleted TEST Solicitante user (TEST_sol_user@example.com) - remains in DB as is_active=false (delete is soft). DB is otherwise unchanged.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Solicitante role backend tests at /app/backend/tests/test_solicitante_role.py (12/12 pass). Run: pytest backend/tests/test_solicitante_role.py -v --junitxml=/app/test_reports/pytest/pytest_solicitante_role.xml. Key data-testids: tickets-page, new-ticket-btn, ticket-title-input, ticket-description-input, ticket-priority-select, ticket-category-select, ticket-equipment-select, ticket-save-btn, ticket-row-{id}, ticket-comment-input, ticket-comment-send, assign-tech-select, ticket-start-btn, ticket-resolve-btn, ticket-close-btn. Expected equipment id for sol: f1c1a368-5ebf-4c4d-bb5f-4e594f526774 (LAP-001). Solicitante sidebar shows exactly 1 item ('Mis Tickets'). Admin sidebar has 15 items. KEY SECURITY GAP flagged in action_items: GET/PUT/DELETE /tickets/{id} and POST /tickets/{id}/comments do NOT enforce ownership for Solicitante - they only rely on list/stats filter. Please ask main agent to harden these endpoints.",
+  "rca of the issue": "N/A - feature verification pass. Security hardening recommendations filed under action_items/critical_code_review_comments."
+}
