@@ -15,7 +15,7 @@ Modernizar un proyecto PHP de inventario TI existente en una aplicación full-st
 ├── database.py            # Conexión MongoDB
 ├── auth.py                # JWT, passwords, get_current_user
 ├── helpers.py             # generate_id, now_iso, sanitize_text
-├── models.py              # Todos los modelos Pydantic (521 líneas)
+├── models.py              # Todos los modelos Pydantic
 ├── routes/
 │   ├── __init__.py        # Agregación de routers
 │   ├── auth_routes.py     # Auth + Users + Roles
@@ -54,11 +54,14 @@ Modernizar un proyecto PHP de inventario TI existente en una aplicación full-st
 - Login page personalizable (fondo, títulos, logo)
 - Sistema de notificaciones in-app
 - Notificaciones email vía Resend (manual)
-- **Notificaciones automáticas con APScheduler** (configurables: hora, tipos, destinatarios)
-- **Refactorización completa del backend** (de 3680 líneas monolíticas a 15+ módulos)
+- Notificaciones automáticas con APScheduler (configurables: hora, tipos, destinatarios)
+- Refactorización completa del backend (de 3680 líneas monolíticas a 15+ módulos)
 - Asignación de equipos a empleados
 - Bajas de equipos
 - Remoción de branding externo
+- **Campos Office (version/licencia) en equipos** (24/04/2026)
+- **Nombre de usuario asignado en encabezado de PDF de mantenimientos** (24/04/2026)
+- **Office incluido en todos los reportes PDF de equipos y mantenimientos** (24/04/2026)
 
 ## Integraciones 3rd Party
 - **Resend**: Envío de emails (API Key: sandbox)
@@ -74,8 +77,9 @@ Modernizar un proyecto PHP de inventario TI existente en una aplicación full-st
 - Integración PAC para timbrado CFDI (requiere proveedor: Facturama/Finkok)
 
 ### P2 - Futuras
-- Re-implementar checklist en MaintenancePage
+- Refactorizar MaintenancePage.js (frontend)
 - Mejoras de accesibilidad (aria-describedby warnings)
 
 ### Notas Operativas
-- El servidor del usuario frecuentemente está desincronizado. Siempre verificar que tiene el código más reciente antes de debuggear.
+- El servidor del usuario frecuentemente está desincronizado. Siempre proporcionar comandos exactos de actualización.
+- Resend en modo sandbox: solo entrega a asalas@asait.com.mx

@@ -661,7 +661,7 @@ async def generate_maintenance_report_pdf(
                 eq_info = f"{eq_code} - {assigned_name} - {eq.get('equipment_type', log.get('equipment_type', ''))}"
             else:
                 eq_info = f"{eq_code} - {eq.get('equipment_type', log.get('equipment_type', ''))}"
-            pdf.cell(70, 5, eq_info[:45], "T")
+            pdf.cell(70, 5, eq_info[:55], "T")
             pdf.set_font("Helvetica", "B", 8)
             pdf.cell(20, 5, "Marca:", "T")
             pdf.set_font("Helvetica", "", 8)
