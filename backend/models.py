@@ -184,6 +184,8 @@ class EquipmentCreate(BaseModel):
     antivirus_name: Optional[str] = None
     antivirus_license: Optional[str] = None
     antivirus_expiry: Optional[str] = None
+    office_version: Optional[str] = None
+    office_license: Optional[str] = None
     ip_address: Optional[str] = None
     mac_address: Optional[str] = None
     windows_user: Optional[str] = None
@@ -222,6 +224,8 @@ class EquipmentResponse(BaseModel):
     antivirus_name: Optional[str] = None
     antivirus_license: Optional[str] = None
     antivirus_expiry: Optional[str] = None
+    office_version: Optional[str] = None
+    office_license: Optional[str] = None
     ip_address: Optional[str] = None
     mac_address: Optional[str] = None
     windows_user: Optional[str] = None

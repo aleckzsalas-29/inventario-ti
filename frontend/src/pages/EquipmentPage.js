@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { 
   Plus, Search, Download, Monitor, Eye, Edit, Trash2, 
   MoreVertical, Loader2, X, KeyRound, Mail, Cloud, EyeOff,
-  Cpu, HardDrive, Wifi, Shield, SlidersHorizontal, User
+  Cpu, HardDrive, Wifi, Shield, SlidersHorizontal, User, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -49,6 +49,8 @@ const initialFormState = {
   antivirus_name: '',
   antivirus_license: '',
   antivirus_expiry: '',
+  office_version: '',
+  office_license: '',
   // Network
   ip_address: '',
   mac_address: '',
@@ -206,6 +208,8 @@ export default function EquipmentPage() {
       antivirus_name: eq.antivirus_name || '',
       antivirus_license: eq.antivirus_license || '',
       antivirus_expiry: eq.antivirus_expiry || '',
+      office_version: eq.office_version || '',
+      office_license: eq.office_license || '',
       // Network
       ip_address: eq.ip_address || '',
       mac_address: eq.mac_address || '',
@@ -690,6 +694,33 @@ export default function EquipmentPage() {
                             type="date"
                             value={form.antivirus_expiry}
                             onChange={(e) => setForm({...form, antivirus_expiry: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 mb-4">
+                        <FileText className="w-5 h-5 text-orange-600" />
+                        <span className="font-medium">Microsoft Office</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs">Version</Label>
+                          <Input
+                            data-testid="office-version-input"
+                            value={form.office_version}
+                            onChange={(e) => setForm({...form, office_version: e.target.value})}
+                            placeholder="Office 365, Office 2021..."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Licencia</Label>
+                          <Input
+                            data-testid="office-license-input"
+                            value={form.office_license}
+                            onChange={(e) => setForm({...form, office_license: e.target.value})}
+                            placeholder="Clave de licencia Office"
                           />
                         </div>
                       </div>

@@ -82,6 +82,7 @@ async def create_equipment(eq_data: EquipmentCreate, current_user: dict = Depend
         "os_name": eq_data.os_name, "os_version": eq_data.os_version, "os_license": eq_data.os_license,
         "antivirus_name": eq_data.antivirus_name, "antivirus_license": eq_data.antivirus_license,
         "antivirus_expiry": eq_data.antivirus_expiry,
+        "office_version": eq_data.office_version, "office_license": eq_data.office_license,
         "ip_address": eq_data.ip_address, "mac_address": eq_data.mac_address,
         "windows_user": eq_data.windows_user, "windows_password": eq_data.windows_password,
         "email_account": eq_data.email_account, "email_password": eq_data.email_password,

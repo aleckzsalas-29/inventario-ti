@@ -273,7 +273,7 @@ export default function EquipmentDetailPage() {
           )}
 
           {/* Software */}
-          {(equipment.os_name || equipment.antivirus_name) && (
+          {(equipment.os_name || equipment.antivirus_name || equipment.office_version) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -301,6 +301,15 @@ export default function EquipmentDetailPage() {
                       <p className="text-xs text-muted-foreground mt-1">
                         Vence: {equipment.antivirus_expiry}
                       </p>
+                    )}
+                  </div>
+                )}
+                {equipment.office_version && (
+                  <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20" data-testid="office-info">
+                    <p className="text-xs text-muted-foreground mb-1">Microsoft Office</p>
+                    <p className="font-medium text-sm">{equipment.office_version}</p>
+                    {equipment.office_license && (
+                      <p className="text-xs font-mono text-muted-foreground mt-1">Lic: {equipment.office_license}</p>
                     )}
                   </div>
                 )}

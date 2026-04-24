@@ -69,7 +69,7 @@ def _add_equipment_detail(pdf, eq, assigned_name, custom_fields_list):
             row("Almacenamiento", storage, None, None)
 
     # SOFTWARE
-    has_sw = any([eq.get('os_name'), eq.get('antivirus_name')])
+    has_sw = any([eq.get('os_name'), eq.get('antivirus_name'), eq.get('office_version')])
     if has_sw:
         pdf.set_font("Helvetica", "BI", 8)
         pdf.set_fill_color(240, 240, 240)
@@ -78,6 +78,8 @@ def _add_equipment_detail(pdf, eq, assigned_name, custom_fields_list):
         if eq.get('os_version'):
             os_info += f" {eq['os_version']}"
         row("Sist. Operativo", os_info if os_info else None, "Licencia SO", eq.get('os_license'))
+        if eq.get('office_version'):
+            row("Office", eq.get('office_version'), "Lic. Office", eq.get('office_license'))
         if eq.get('antivirus_name'):
             row("Antivirus", eq.get('antivirus_name'), "Vence AV", eq.get('antivirus_expiry'))
 
@@ -346,7 +348,7 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
                 pdf.cell(0, 6, storage_info, 0, 1)
             pdf.ln(3)
 
-        has_software = any([eq.get('os_name'), eq.get('antivirus_name')])
+        has_software = any([eq.get('os_name'), eq.get('antivirus_name'), eq.get('office_version')])
         if has_software:
             pdf.section_title("SOFTWARE INSTALADO")
             if eq.get('os_name'):
@@ -362,6 +364,16 @@ async def generate_maintenance_history_pdf(equipment_id: str, current_user: dict
                     pdf.cell(30, 6, "Licencia SO:", 0)
                     pdf.set_font("Helvetica", "", 9)
                     pdf.cell(0, 6, eq.get('os_license', ''), 0, 1)
+            if eq.get('office_version'):
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(30, 6, "Office:", 0)
+                pdf.set_font("Helvetica", "", 9)
+                pdf.cell(0, 6, eq.get('office_version', ''), 0, 1)
+                if eq.get('office_license'):
+                    pdf.set_font("Helvetica", "B", 9)
+                    pdf.cell(30, 6, "Lic. Office:", 0)
+                    pdf.set_font("Helvetica", "", 9)
+                    pdf.cell(0, 6, eq.get('office_license', ''), 0, 1)
             if eq.get('antivirus_name'):
                 pdf.set_font("Helvetica", "B", 9)
                 pdf.cell(30, 6, "Antivirus:", 0)
@@ -643,8 +655,13 @@ async def generate_maintenance_report_pdf(
             pdf.set_font("Helvetica", "B", 8)
             pdf.cell(25, 5, "Equipo:", "LT")
             pdf.set_font("Helvetica", "", 8)
-            eq_info = f"{eq.get('inventory_code', log.get('equipment_code', 'N/A'))} - {eq.get('equipment_type', log.get('equipment_type', ''))}"
-            pdf.cell(70, 5, eq_info[:40], "T")
+            assigned_name = employees_map.get(eq.get("assigned_to", ""), "")
+            eq_code = eq.get('inventory_code', log.get('equipment_code', 'N/A'))
+            if assigned_name:
+                eq_info = f"{eq_code} - {assigned_name} - {eq.get('equipment_type', log.get('equipment_type', ''))}"
+            else:
+                eq_info = f"{eq_code} - {eq.get('equipment_type', log.get('equipment_type', ''))}"
+            pdf.cell(70, 5, eq_info[:45], "T")
             pdf.set_font("Helvetica", "B", 8)
             pdf.cell(20, 5, "Marca:", "T")
             pdf.set_font("Helvetica", "", 8)
@@ -680,6 +697,15 @@ async def generate_maintenance_report_pdf(
                 pdf.cell(20, 5, "Estado Eq:", 0)
                 pdf.set_font("Helvetica", "", 8)
                 pdf.cell(0, 5, eq.get('status', 'N/A'), "R", 1)
+
+            if eq.get('office_version'):
+                pdf.set_font("Helvetica", "B", 8)
+                pdf.cell(25, 5, "Office:", "L")
+                pdf.set_font("Helvetica", "", 8)
+                office_info = eq.get('office_version', '')
+                if eq.get('office_license'):
+                    office_info += f" | Lic: {eq.get('office_license', '')}"
+                pdf.cell(0, 5, office_info[:60], "R", 1)
 
             assigned_name = employees_map.get(eq.get("assigned_to", ""), "")
             if assigned_name:
