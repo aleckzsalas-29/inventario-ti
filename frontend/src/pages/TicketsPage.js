@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
 import {
@@ -122,6 +122,7 @@ function TicketDetail({ ticket, onClose, onUpdate, users }) {
           <span className="text-muted-foreground font-mono text-sm">{ticket.ticket_number}</span>
           <span>{ticket.title}</span>
         </DialogTitle>
+        <DialogDescription>Detalle del ticket, cambio de estado y comentarios.</DialogDescription>
       </DialogHeader>
 
       <div className="space-y-5">
@@ -467,7 +468,10 @@ export default function TicketsPage() {
             <Button data-testid="new-ticket-btn"><Plus className="w-4 h-4 mr-2" />Nuevo Ticket</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Crear Ticket de Soporte</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>Crear Ticket de Soporte</DialogTitle>
+              <DialogDescription>Completa los campos para crear una nueva solicitud.</DialogDescription>
+            </DialogHeader>
             <CreateTicketForm
               equipment={equipment}
               users={users}
