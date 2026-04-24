@@ -155,18 +155,11 @@ async def get_recipients_for_company(company_id: str, notif_settings: dict) -> l
 
 
 async def get_global_admin_emails() -> list:
-    """Get emails of admin users without a company (global admins)"""
-    admin_role = await db.roles.find_one({"name": "Administrador"}, {"id": 1})
-    if not admin_role:
-        admins = await db.users.find(
-            {"is_active": True, "company_id": {"$in": [None, ""]}},
-            {"_id": 0, "email": 1}
-        ).to_list(50)
-    else:
-        admins = await db.users.find(
-            {"is_active": True, "$or": [{"company_id": {"$in": [None, ""]}}, {"role_id": admin_role["id"]}]},
-            {"_id": 0, "email": 1}
-        ).to_list(50)
+    """Get emails of admin users without a company (global admins only)"""
+    admins = await db.users.find(
+        {"is_active": True, "company_id": {"$in": [None, ""]}},
+        {"_id": 0, "email": 1}
+    ).to_list(50)
     return list(set([a["email"] for a in admins if a.get("email")]))
 
 

@@ -66,6 +66,7 @@ Modernizar un proyecto PHP de inventario TI existente en una aplicación full-st
 - **Dashboard avanzado con graficas Recharts** (24/04/2026): Bar chart mantenimientos/mes, Pie charts estado equipos y mantenimientos, Area chart equipos/mes, Top equipos con mas incidencias, KPIs promedio resolucion y servicios por vencer
 - **PWA (Progressive Web App)** (24/04/2026): manifest.json, service worker, iconos, app instalable desde celular/escritorio
 - **Sistema de Tickets de Soporte** (24/04/2026): CRUD completo, numeracion automatica (TK-0001), flujo de estados (Abierto->En Proceso->Resuelto->Cerrado), prioridades, categorias, asignacion a tecnicos, comentarios, vinculacion con equipos, estadisticas
+- **Notificaciones por empresa** (24/04/2026): Cada empresa tiene su propia configuracion de notificaciones (hora, tipos, destinatarios). Solo usuarios de esa empresa reciben sus notificaciones. Admin global recibe de todas.
 
 ## Integraciones 3rd Party
 - **Resend**: Envío de emails (API Key: sandbox)
