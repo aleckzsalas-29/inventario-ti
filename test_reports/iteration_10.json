@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 10: Per-company email notification settings tested end-to-end. Backend 11/11 pytest pass in /app/backend/tests/test_per_company_notifications.py covering GET /notifications/settings (legacy global + company_id), PUT /notifications/settings?company_id=... persistence (Create->GET roundtrip verified send_time, service_renewal_days, custom_recipients, type='company_notifications'), GET /notifications/settings/all-companies overview (TechCorp S.A. present, configured=true, auto_send_enabled=true after PUT), POST /notifications/send-now?company_id=... (200 OK), POST /notifications/send-now (global, 200 OK), POST /notifications/email/send?company_id=... (200 OK), 404 for non-existent company on both send-now and email/send, auth enforced (401). Frontend: admin login -> /notifications page loaded -> company-selector-card visible -> company-select auto-selected 'TechCorp S.A.' and loaded per-company settings (send_time=09:30 from prior PUT). Changed send_time to 10:15 + toggled maintenance-toggle off + save-settings-btn -> 'Configuracion guardada correctamente' -> page reload -> send_time=10:15 and maintenance=false persisted (Read-after-Write confirmed). 'Configurada' and 'Auto activado' badges render correctly. trigger-auto-btn -> 'Notificaciones ejecutadas para esta empresa' (company-scoped). Custom recipient TEST_notify@example.com rendered as chip. recipient-type-select shows 'Destinatarios personalizados'. Cleaned up test data at end.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_per_company_notifications.py",
+    "/app/test_reports/pytest/pytest_per_company_notifications.xml"
+  ],
+  "action_items": [
+    "Consider validating send_time format (HH:MM, 24h) in PUT /notifications/settings - currently any string passes through and only fails silently at scheduler cron parse (caught by except and defaults to 08:00).",
+    "update_scheduler_job in PUT handler uses settings_data.send_time of the just-updated company; if multiple companies have distinct send_times, only the most-recently-saved company's time will be scheduled (single global cron). Real per-company scheduling would require per-company cron jobs. Document or implement.",
+    "get_global_admin_emails() adds admins of ANY company to every company's recipient list (due to $or role_id match). This breaks tenant isolation - admin of company A will receive emails with company B data. Intent per PRD was 'global admin (no company_id)' only. Fix: filter by company_id IN [None, ''] AND role=admin (AND), not OR.",
+    "POST /notifications/email/send with company_id forces service_renewal_enabled/maintenance_pending_enabled/maintenance_completed_enabled based on a single notification_type; however send_notifications_for_company sends ALL three enabled types (this effectively limits to one type, which is correct). Leave as-is but consider renaming parameter for clarity.",
+    "Backward-compat note: legacy doc type='notifications' is still returned by GET /notifications/settings (no company_id). Consider migrating or deprecating once all clients pass company_id."
+  ],
+  "critical_code_review_comments": [
+    "services/email_service.py:get_global_admin_emails uses $or which leaks admins-of-company-X into notifications for company-Y. Change to AND to match PRD ('global admin = no company_id').",
+    "routes/notification_routes.py:update_notification_settings calls update_scheduler_job(send_time=settings_data.send_time) per request - this overwrites scheduler based on last-saved company only. A single APScheduler cron cannot represent N companies with N different send_times. Needs per-company job_id or aggregation strategy.",
+    "routes/notification_routes.py:send_notification_email (global path, no company_id) does not filter maintenances/services by company - preserved for backward compat but mixes tenant data when admin triggers. Flag for deprecation.",
+    "services/email_service.py:send_notifications_for_company uses yesterday = datetime.now(...).isoformat()[:10] then filters completed_at >= <today_iso_date_string>; since completed_at is full ISO datetime, the >= string comparison works but variable name 'yesterday' is misleading - it's actually today (00:00). Rename or change to actually subtract 1 day.",
+    "NotificationsPage.js: loadCompanies useCallback has no deps but references selectedCompany - stale closure. Minor because only called once on mount, but ESLint would warn. Add selectedCompany to deps or use functional form."
+  ],
+  "updated_files": ["/app/backend/tests/test_per_company_notifications.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@example.com / adminpassword",
+  "seed_data_creation": "Backend test PUT a per-company config (send_time=09:30, auto_send=true, custom_recipients=[TEST_notify@example.com]). UI test then modified to send_time=10:15 and maintenance_pending=false. All data was RESET at end of run to safe defaults (send_time=08:00, auto_send=false, recipient_type=all_users, empty custom_recipients) so DB is clean.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Per-company notifications backend tests at /app/backend/tests/test_per_company_notifications.py (11/11 pass). Run: pytest backend/tests/test_per_company_notifications.py -v --junitxml=/app/test_reports/pytest/pytest_per_company_notifications.xml. Key data-testids verified: notifications-page, company-selector-card, company-select, auto-send-toggle, send-time-input, maintenance-toggle, services-toggle, completed-toggle, renewal-days-input, recipient-type-select, save-settings-btn, trigger-auto-btn, notification-message, custom-recipient-input, add-recipient-btn. Test company id = 9b90fc35-de4f-4578-9194-27ae70471954 (only company in DB). New notification_settings docs use type='company_notifications'+company_id; legacy type='notifications' still supported for no-company_id calls. NOT A BLOCKER but worth flagging to main agent: (1) get_global_admin_emails $or->AND bug leaks cross-tenant, (2) single APScheduler job can only represent one send_time even with multiple companies. Both noted in action_items.",
+  "rca of the issue": "N/A - feature verification, no bug reproduction needed."
+}

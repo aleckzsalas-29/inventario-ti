@@ -4,7 +4,7 @@ from database import db
 from auth import get_current_user, check_permission
 from models import MaintenanceLogCreate, MaintenanceLogResponse
 from helpers import generate_id, now_iso
-from services.email_service import send_email, get_email_template, get_recipients_for_notifications
+from services.email_service import send_email, get_email_template, get_recipients_for_company, get_global_admin_emails
 import asyncio
 import logging
 
@@ -145,26 +145,32 @@ async def complete_maintenance(log_id: str, notes: Optional[str] = None, solutio
     }
     await db.equipment_logs.insert_one(eq_log)
 
-    # Send email notification for completed maintenance
+    # Send email notification for completed maintenance (per-company)
     try:
-        notif_settings = await db.notification_settings.find_one({"type": "notifications"}, {"_id": 0})
-        if notif_settings and notif_settings.get("maintenance_completed_enabled", True):
-            app_settings = await db.settings.find_one({"type": "system"}, {"_id": 0}) or {}
-            eq = await db.equipment.find_one({"id": log["equipment_id"]}, {"_id": 0})
-            updated_log = await db.maintenance_logs.find_one({"id": log_id}, {"_id": 0})
-            updated_log["equipment_code"] = eq.get("inventory_code", "N/A") if eq else "N/A"
+        eq = await db.equipment.find_one({"id": log["equipment_id"]}, {"_id": 0})
+        company_id = eq.get("company_id") if eq else None
+        if company_id:
+            notif_settings = await db.notification_settings.find_one(
+                {"type": "company_notifications", "company_id": company_id}, {"_id": 0}
+            )
+            if notif_settings and notif_settings.get("maintenance_completed_enabled", True):
+                company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+                updated_log = await db.maintenance_logs.find_one({"id": log_id}, {"_id": 0})
+                updated_log["equipment_code"] = eq.get("inventory_code", "N/A") if eq else "N/A"
 
-            template_data = {
-                "company_name": app_settings.get("company_name", "InventarioTI"),
-                "logo_url": app_settings.get("logo_url", ""),
-                "primary_color": app_settings.get("primary_color", "#3b82f6"),
-                "maintenances": [updated_log]
-            }
-            subject, html = get_email_template("maintenance_completed", template_data)
-            recipients = await get_recipients_for_notifications()
-            for email_addr in recipients:
-                await send_email(email_addr, subject, html)
-                await asyncio.sleep(0.1)
+                template_data = {
+                    "company_name": company.get("name", "InventarioTI") if company else "InventarioTI",
+                    "logo_url": company.get("logo_url", "") if company else "",
+                    "primary_color": "#3b82f6",
+                    "maintenances": [updated_log]
+                }
+                subject, html = get_email_template("maintenance_completed", template_data)
+                recipients = await get_recipients_for_company(company_id, notif_settings)
+                global_admins = await get_global_admin_emails()
+                all_recipients = list(set(recipients + global_admins))
+                for email_addr in all_recipients:
+                    await send_email(email_addr, subject, html)
+                    await asyncio.sleep(0.1)
     except Exception as e:
         logging.error(f"Error sending maintenance completed email: {str(e)}")
 

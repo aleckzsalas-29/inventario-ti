@@ -5,7 +5,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Bell, Send, Clock, Settings, History, Play, CheckCircle, AlertTriangle, Mail } from "lucide-react";
+import { Bell, Send, Clock, Settings, History, Play, CheckCircle, AlertTriangle, Mail, Building2 } from "lucide-react";
 import api from "../lib/api";
 
 const SectionHeader = ({ icon: Icon, title, description }) => (
@@ -60,6 +60,9 @@ export default function NotificationsPage() {
   const [testEmail, setTestEmail] = useState("");
   const [loading, setLoading] = useState({});
   const [message, setMessage] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState("");
+  const [companyOverview, setCompanyOverview] = useState([]);
 
   const [newRecipient, setNewRecipient] = useState("");
 
@@ -80,10 +83,27 @@ export default function NotificationsPage() {
     }));
   };
 
+  const loadCompanies = useCallback(async () => {
+    try {
+      const [companiesRes, overviewRes] = await Promise.all([
+        api.get("/companies"),
+        api.get("/notifications/settings/all-companies")
+      ]);
+      setCompanies(companiesRes.data || []);
+      setCompanyOverview(overviewRes.data || []);
+      if (companiesRes.data?.length > 0 && !selectedCompany) {
+        setSelectedCompany(companiesRes.data[0].id);
+      }
+    } catch (err) {
+      console.error("Error loading companies:", err);
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
+      const params = selectedCompany ? `?company_id=${selectedCompany}` : '';
       const [settingsRes, statusRes, historyRes, alertsRes] = await Promise.all([
-        api.get("/notifications/settings"),
+        api.get(`/notifications/settings${params}`),
         api.get("/notifications/scheduler/status"),
         api.get("/notifications/history"),
         api.get("/notifications/check")
@@ -95,9 +115,10 @@ export default function NotificationsPage() {
     } catch (err) {
       console.error("Error loading notification data:", err);
     }
-  }, []);
+  }, [selectedCompany]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadCompanies(); }, [loadCompanies]);
+  useEffect(() => { if (selectedCompany) loadData(); }, [selectedCompany, loadData]);
 
   const showMessage = (text, type = "success") => {
     setMessage({ text, type });
@@ -107,9 +128,11 @@ export default function NotificationsPage() {
   const saveSettings = async () => {
     setLoading(p => ({ ...p, save: true }));
     try {
-      await api.put("/notifications/settings", settings);
-      showMessage("Configuración guardada correctamente");
+      const params = selectedCompany ? `?company_id=${selectedCompany}` : '';
+      await api.put(`/notifications/settings${params}`, settings);
+      showMessage("Configuracion guardada correctamente");
       loadData();
+      loadCompanies();
     } catch (err) {
       showMessage("Error al guardar: " + (err.response?.data?.detail || err.message), "error");
     }
@@ -131,7 +154,8 @@ export default function NotificationsPage() {
   const sendManualNotification = async (type) => {
     setLoading(p => ({ ...p, [type]: true }));
     try {
-      const res = await api.post("/notifications/email/send", { notification_type: type });
+      const params = selectedCompany ? `?company_id=${selectedCompany}` : '';
+      const res = await api.post(`/notifications/email/send${params}`, { notification_type: type });
       showMessage(res.data.message || "Notificaciones enviadas");
       loadData();
     } catch (err) {
@@ -143,14 +167,17 @@ export default function NotificationsPage() {
   const triggerAutoNow = async () => {
     setLoading(p => ({ ...p, auto: true }));
     try {
-      await api.post("/notifications/send-now");
-      showMessage("Notificaciones automáticas ejecutadas");
+      const params = selectedCompany ? `?company_id=${selectedCompany}` : '';
+      await api.post(`/notifications/send-now${params}`);
+      showMessage("Notificaciones ejecutadas para esta empresa");
       loadData();
     } catch (err) {
       showMessage("Error: " + (err.response?.data?.detail || err.message), "error");
     }
     setLoading(p => ({ ...p, auto: false }));
   };
+
+  const selectedCompanyName = companies.find(c => c.id === selectedCompany)?.name || "";
 
   if (!settings) return <div className="p-8 text-center text-muted-foreground">Cargando...</div>;
 
@@ -159,7 +186,7 @@ export default function NotificationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Notificaciones por Email</h1>
-          <p className="text-muted-foreground">Configura y envía notificaciones automáticas y manuales</p>
+          <p className="text-muted-foreground">Configura notificaciones por empresa</p>
         </div>
         {alerts && (
           <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-4 py-2 rounded-lg">
@@ -170,6 +197,39 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
+
+      {/* Company Selector */}
+      <Card data-testid="company-selector-card">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary" />
+              <Label className="font-semibold text-base">Empresa:</Label>
+            </div>
+            <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+              <SelectTrigger className="w-[300px]" data-testid="company-select">
+                <SelectValue placeholder="Seleccionar empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedCompanyName && (
+              <div className="flex gap-3 ml-4">
+                {companyOverview.find(o => o.company_id === selectedCompany)?.configured
+                  ? <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Configurada</span>
+                  : <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Sin configurar</span>
+                }
+                {companyOverview.find(o => o.company_id === selectedCompany)?.auto_send_enabled && (
+                  <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Auto activado</span>
+                )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {message && (
         <div className={`p-3 rounded-lg text-sm font-medium ${
@@ -190,7 +250,7 @@ export default function NotificationsPage() {
               Notificaciones Automáticas
             </CardTitle>
             <CardDescription>
-              Configura el envío automático diario de notificaciones
+              Configura el envio automatico para <strong>{selectedCompanyName}</strong>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -275,7 +335,7 @@ export default function NotificationsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all_users">Todos los usuarios</SelectItem>
+                  <SelectItem value="all_users">Todos los usuarios de esta empresa</SelectItem>
                   <SelectItem value="admins_only">Solo administradores</SelectItem>
                   <SelectItem value="custom">Destinatarios personalizados</SelectItem>
                 </SelectContent>
