@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
+from datetime import datetime, timezone, timedelta
 from database import db
 from auth import get_current_user, check_permission
 from models import CustomFieldCreate, CustomFieldResponse, SystemSettings
@@ -104,6 +105,120 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         "equipment_by_type": [{"type": e["_id"] or "Sin tipo", "count": e["count"]} for e in equipment_by_type],
         "recent_activity": recent_logs
     }
+
+
+@router.get("/dashboard/advanced-stats")
+async def get_advanced_dashboard_stats(current_user: dict = Depends(get_current_user)):
+    now = datetime.now(timezone.utc)
+
+    # --- Maintenance by month (last 6 months) ---
+    six_months_ago = now - timedelta(days=180)
+    maintenance_pipeline = [
+        {"$match": {"created_at": {"$gte": six_months_ago.isoformat()}}},
+        {"$addFields": {"month": {"$substr": ["$created_at", 0, 7]}}},
+        {"$group": {
+            "_id": {"month": "$month", "maintenance_type": "$maintenance_type"},
+            "count": {"$sum": 1}
+        }},
+        {"$sort": {"_id.month": 1}}
+    ]
+    maint_by_month_raw = await db.maintenance_logs.aggregate(maintenance_pipeline).to_list(100)
+
+    months_set = sorted(set(r["_id"]["month"] for r in maint_by_month_raw))
+    maint_by_month = []
+    for month in months_set:
+        entry = {"month": month, "Preventivo": 0, "Correctivo": 0, "Reparacion": 0, "Otro": 0}
+        for r in maint_by_month_raw:
+            if r["_id"]["month"] == month:
+                entry[r["_id"]["maintenance_type"]] = r["count"]
+        entry["total"] = entry["Preventivo"] + entry["Correctivo"] + entry["Reparacion"] + entry["Otro"]
+        maint_by_month.append(entry)
+
+    # --- Maintenance status distribution ---
+    status_pipeline = [
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+    ]
+    maint_status_raw = await db.maintenance_logs.aggregate(status_pipeline).to_list(10)
+    maintenance_by_status = [{"status": r["_id"] or "Sin estado", "count": r["count"]} for r in maint_status_raw]
+
+    # --- Average resolution time (completed maintenances) ---
+    completed_logs = await db.maintenance_logs.find(
+        {"status": "Finalizado", "completed_at": {"$exists": True}, "created_at": {"$exists": True}},
+        {"_id": 0, "created_at": 1, "completed_at": 1}
+    ).to_list(500)
+
+    resolution_times = []
+    for log in completed_logs:
+        try:
+            created = datetime.fromisoformat(log["created_at"].replace("Z", "+00:00"))
+            completed = datetime.fromisoformat(log["completed_at"].replace("Z", "+00:00"))
+            diff_hours = (completed - created).total_seconds() / 3600
+            if diff_hours >= 0:
+                resolution_times.append(diff_hours)
+        except Exception:
+            pass
+
+    avg_resolution_hours = round(sum(resolution_times) / len(resolution_times), 1) if resolution_times else 0
+
+    # --- Top equipment with most maintenance (top 5) ---
+    top_eq_pipeline = [
+        {"$group": {"_id": "$equipment_id", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 5}
+    ]
+    top_equipment_raw = await db.maintenance_logs.aggregate(top_eq_pipeline).to_list(5)
+    top_equipment = []
+    for item in top_equipment_raw:
+        eq = await db.equipment.find_one({"id": item["_id"]}, {"_id": 0, "inventory_code": 1, "equipment_type": 1, "brand": 1, "model": 1})
+        if eq:
+            top_equipment.append({
+                "equipment_id": item["_id"],
+                "code": eq.get("inventory_code", "N/A"),
+                "type": eq.get("equipment_type", ""),
+                "brand_model": f"{eq.get('brand', '')} {eq.get('model', '')}".strip(),
+                "count": item["count"]
+            })
+
+    # --- Equipment by status (for pie chart) ---
+    eq_status_pipeline = [
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    eq_by_status_raw = await db.equipment.aggregate(eq_status_pipeline).to_list(10)
+    equipment_by_status = [{"status": r["_id"] or "Sin estado", "count": r["count"]} for r in eq_by_status_raw]
+
+    # --- Services expiring soon (next 30 days) ---
+    expiring_services = 0
+    services = await db.external_services.find({"is_active": {"$ne": False}, "renewal_date": {"$exists": True}}, {"_id": 0, "renewal_date": 1}).to_list(500)
+    for svc in services:
+        try:
+            renewal = datetime.fromisoformat(svc["renewal_date"].replace("Z", "+00:00"))
+            if 0 <= (renewal - now).days <= 30:
+                expiring_services += 1
+        except Exception:
+            pass
+
+    # --- Monthly equipment additions (last 6 months) ---
+    eq_by_month_pipeline = [
+        {"$match": {"created_at": {"$gte": six_months_ago.isoformat()}}},
+        {"$addFields": {"month": {"$substr": ["$created_at", 0, 7]}}},
+        {"$group": {"_id": "$month", "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}}
+    ]
+    eq_by_month_raw = await db.equipment.aggregate(eq_by_month_pipeline).to_list(12)
+    equipment_by_month = [{"month": r["_id"], "count": r["count"]} for r in eq_by_month_raw]
+
+    return {
+        "maintenance_by_month": maint_by_month,
+        "maintenance_by_status": maintenance_by_status,
+        "avg_resolution_hours": avg_resolution_hours,
+        "total_completed": len(resolution_times),
+        "top_equipment_incidents": top_equipment,
+        "equipment_by_status": equipment_by_status,
+        "equipment_by_month": equipment_by_month,
+        "expiring_services_30d": expiring_services
+    }
+
 
 
 # ==================== PERMISSIONS ====================

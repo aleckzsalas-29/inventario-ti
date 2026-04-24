@@ -31,6 +31,7 @@ export const authAPI = {
 
 export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
+  getAdvancedStats: () => api.get('/dashboard/advanced-stats'),
 };
 
 export const usersAPI = {

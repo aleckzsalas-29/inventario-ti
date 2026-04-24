@@ -1,0 +1,30 @@
+{
+  "summary": "Dashboard charts & advanced-stats (iteration 8) verified end-to-end. Backend: 6/6 pytest passed against /api/dashboard/advanced-stats (shape, maintenance_by_month entries, equipment_by_status, top_equipment_incidents, unauthorized) and regression /api/dashboard/stats. Frontend: login as admin@example.com -> dashboard-page renders; all KPI testids (kpi-total-equipment=5, kpi-available-equipment=4, kpi-assigned-equipment=1, kpi-in-maintenance=16, kpi-avg-resolution=0.2h/8 completados, kpi-expiring-services=0) visible; all chart testids (chart-maintenance-by-month, chart-equipment-status, chart-maintenance-status, top-equipment-incidents, chart-equipment-by-month) render with SVG; top-equipment-incidents shows 2 ranked rows (LAP-001=17); Secondary labels Empresas / Prom. Resolucion / Cotizaciones Pend. / Servicios por Vencer and 'Actividad Reciente' section all present; no runtime console errors on Dashboard.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_dashboard_advanced.py",
+    "/app/test_reports/pytest/pytest_dashboard_advanced.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "DashboardPage KpiCards: kpi-in-maintenance displays stats.pending_maintenance (count of maintenance logs in Pendiente/En Proceso -> 16), but the card label says 'En Mantenimiento' which readers will interpret as equipment count with status 'En Mantenimiento' (0 in current data). The value 16 vs primary KPI row total=5 is visually confusing. Consider either relabeling to 'Mantenimientos Pendientes' or binding to stats.equipment.in_maintenance for consistency with the other equipment KPIs.",
+    "config_routes.py /dashboard/advanced-stats: does NOT filter by current_user.company_id while /dashboard/stats does. Multi-tenant inconsistency - an admin of company A will see maintenance logs/equipment from ALL companies in advanced charts. Add company_filter to the maintenance_pipeline, eq_status_pipeline, eq_by_month_pipeline, top_eq_pipeline for tenant isolation.",
+    "config_routes.py line 117 'created_at: $gte $gte six_months_ago.isoformat()': comparing ISO strings works only when timestamps are stored as ISO-8601 strings (which seems true here). If any timestamps are stored as BSON Date objects, the filter silently drops them. Consider normalizing on insertion.",
+    "MaintenanceByMonthChart only renders Preventivo/Correctivo/Reparacion bars; 'Otro' is aggregated in total but never drawn. Either add a 4th Bar for Otro or drop it from the per-bucket aggregation to avoid lost counts in the chart vs raw data.",
+    "DashboardPage formatMonth uses 2-digit year slice (e.g. 'Feb 26' for Feb 2026). With 6-month window and months prior to 2010 it's fine, but cosmetic; consider 'Feb 26' -> 'Feb 2026' when screen width permits.",
+    "CustomTooltip / Pie Tooltip duplicated formatter logic: consider a shared tooltip component to DRY-up format(value)/%% logic."
+  ],
+  "updated_files": ["/app/backend/tests/test_dashboard_advanced.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@example.com / adminpassword",
+  "seed_data_creation": "None - used existing DB data (5 equipment, 24 maintenance logs, 1 company).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Dashboard advanced stats tests live at /app/backend/tests/test_dashboard_advanced.py. All 6 pytest tests pass. Frontend Dashboard charts validated at https://maintenance-hub-284.preview.emergentagent.com. Known multi-tenant gap: /api/dashboard/advanced-stats aggregates across companies (no company_id filter) while /api/dashboard/stats does filter - flag for main agent if multi-tenant is in scope. Also label mismatch on kpi-in-maintenance (shows pending_maintenance count=16 not equipment.in_maintenance=0).",
+  "rca of the issue": "N/A - feature addition, no bug."
+}
