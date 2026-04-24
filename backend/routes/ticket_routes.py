@@ -136,6 +136,8 @@ async def get_ticket(ticket_id: str, current_user: dict = Depends(get_current_us
     ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    if await _is_solicitante(current_user) and ticket.get("created_by") != current_user.get("id"):
+        raise HTTPException(status_code=403, detail="No tiene acceso a este ticket")
     ticket = await _enrich_ticket(ticket)
     return TicketResponse(**ticket)
 
@@ -170,6 +172,8 @@ async def update_ticket(ticket_id: str, data: TicketUpdate, current_user: dict =
     ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    if await _is_solicitante(current_user):
+        raise HTTPException(status_code=403, detail="No tiene permisos para modificar tickets")
 
     update_data = data.model_dump(exclude_unset=True)
     update_data["updated_at"] = now_iso()
@@ -186,6 +190,8 @@ async def update_ticket(ticket_id: str, data: TicketUpdate, current_user: dict =
 
 @router.delete("/tickets/{ticket_id}")
 async def delete_ticket(ticket_id: str, current_user: dict = Depends(get_current_user)):
+    if await _is_solicitante(current_user):
+        raise HTTPException(status_code=403, detail="No tiene permisos para eliminar tickets")
     result = await db.tickets.delete_one({"id": ticket_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
@@ -197,6 +203,10 @@ async def delete_ticket(ticket_id: str, current_user: dict = Depends(get_current
 
 @router.get("/tickets/{ticket_id}/comments", response_model=List[TicketCommentResponse])
 async def get_ticket_comments(ticket_id: str, current_user: dict = Depends(get_current_user)):
+    if await _is_solicitante(current_user):
+        ticket = await db.tickets.find_one({"id": ticket_id}, {"_id": 0, "created_by": 1})
+        if not ticket or ticket.get("created_by") != current_user.get("id"):
+            raise HTTPException(status_code=403, detail="No tiene acceso a este ticket")
     comments = await db.ticket_comments.find({"ticket_id": ticket_id}, {"_id": 0}).sort("created_at", 1).to_list(100)
     result = []
     for c in comments:
@@ -212,6 +222,8 @@ async def create_ticket_comment(ticket_id: str, data: TicketCommentCreate, curre
     ticket = await db.tickets.find_one({"id": ticket_id})
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    if await _is_solicitante(current_user) and ticket.get("created_by") != current_user.get("id"):
+        raise HTTPException(status_code=403, detail="No tiene acceso a este ticket")
 
     comment = {
         "id": generate_id(),
