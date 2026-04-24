@@ -62,6 +62,7 @@ Modernizar un proyecto PHP de inventario TI existente en una aplicación full-st
 - **Campos Office (version/licencia) en equipos** (24/04/2026)
 - **Nombre de usuario asignado en encabezado de PDF de mantenimientos** (24/04/2026)
 - **Office incluido en todos los reportes PDF de equipos y mantenimientos** (24/04/2026)
+- **Refactorizacion MaintenancePage.js** en subcomponentes (MaintenanceFilters, MaintenanceTable, MaintenanceRow, MaintenanceForm, PreventiveFields, CorrectiveFields, CompleteDialog) (24/04/2026)
 
 ## Integraciones 3rd Party
 - **Resend**: Envío de emails (API Key: sandbox)
@@ -77,8 +78,9 @@ Modernizar un proyecto PHP de inventario TI existente en una aplicación full-st
 - Integración PAC para timbrado CFDI (requiere proveedor: Facturama/Finkok)
 
 ### P2 - Futuras
-- Refactorizar MaintenancePage.js (frontend)
 - Mejoras de accesibilidad (aria-describedby warnings)
+- Modelo `EquipmentUpdate` con `exclude_unset=True` para actualizaciones parciales
+- Eliminar endpoint duplicado `/maintenance-logs` en backend (DRY)
 
 ### Notas Operativas
 - El servidor del usuario frecuentemente está desincronizado. Siempre proporcionar comandos exactos de actualización.

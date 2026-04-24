@@ -140,7 +140,7 @@ function MaintenanceRow({ log, onStart, onComplete, onDownloadPdf }) {
       </td>
       <td className="text-right">
         <div className="flex items-center justify-end gap-2">
-          <Button size="sm" variant="ghost" onClick={() => onDownloadPdf(log.equipment_id)} title="Descargar historial">
+          <Button size="sm" variant="ghost" onClick={() => onDownloadPdf(log.equipment_id)} title="Descargar historial" data-testid={`download-history-btn-${log.id}`}>
             <Download className="w-4 h-4" />
           </Button>
           {log.status === 'Pendiente' && (
@@ -161,7 +161,7 @@ function MaintenanceRow({ log, onStart, onComplete, onDownloadPdf }) {
 
 // ==================== TABLE ====================
 
-function MaintenanceTable({ logs, searchQuery, onStart, onComplete, onDownloadPdf, filterStatus, filterType }) {
+function MaintenanceTable({ logs, searchQuery, onStart, onComplete, onDownloadPdf, hasActiveFilters }) {
   const filteredLogs = logs.filter(log => {
     if (!searchQuery) return true;
     const s = searchQuery.toLowerCase();
@@ -180,7 +180,7 @@ function MaintenanceTable({ logs, searchQuery, onStart, onComplete, onDownloadPd
             <Wrench className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="font-semibold mb-1">No hay mantenimientos</h3>
             <p className="text-muted-foreground text-sm">
-              {filterStatus || filterType || searchQuery
+              {hasActiveFilters
                 ? 'No se encontraron registros'
                 : 'No hay bitacoras registradas'}
             </p>
@@ -627,13 +627,13 @@ export default function MaintenancePage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => downloadPeriodReport('day')}>
+              <DropdownMenuItem onClick={() => downloadPeriodReport('day')} data-testid="report-period-day">
                 <Clock className="w-4 h-4 mr-2" />Ultimo dia
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => downloadPeriodReport('week')}>
+              <DropdownMenuItem onClick={() => downloadPeriodReport('week')} data-testid="report-period-week">
                 <Clock className="w-4 h-4 mr-2" />Ultima semana
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => downloadPeriodReport('month')}>
+              <DropdownMenuItem onClick={() => downloadPeriodReport('month')} data-testid="report-period-month">
                 <Clock className="w-4 h-4 mr-2" />Ultimo mes
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -676,8 +676,7 @@ export default function MaintenancePage() {
       <MaintenanceTable
         logs={logs}
         searchQuery={searchQuery}
-        filterStatus={filterStatus}
-        filterType={filterType}
+        hasActiveFilters={!!(filterStatus || filterType || searchQuery)}
         onStart={handleStart}
         onComplete={openCompleteDialog}
         onDownloadPdf={downloadMaintenancePdf}
