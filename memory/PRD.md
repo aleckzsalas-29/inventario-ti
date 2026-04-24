@@ -63,6 +63,7 @@ Modernizar un proyecto PHP de inventario TI existente en una aplicación full-st
 - **Nombre de usuario asignado en encabezado de PDF de mantenimientos** (24/04/2026)
 - **Office incluido en todos los reportes PDF de equipos y mantenimientos** (24/04/2026)
 - **Refactorizacion MaintenancePage.js** en subcomponentes (MaintenanceFilters, MaintenanceTable, MaintenanceRow, MaintenanceForm, PreventiveFields, CorrectiveFields, CompleteDialog) (24/04/2026)
+- **Dashboard avanzado con graficas Recharts** (24/04/2026): Bar chart mantenimientos/mes, Pie charts estado equipos y mantenimientos, Area chart equipos/mes, Top equipos con mas incidencias, KPIs promedio resolucion y servicios por vencer
 
 ## Integraciones 3rd Party
 - **Resend**: Envío de emails (API Key: sandbox)
@@ -75,6 +76,9 @@ Modernizar un proyecto PHP de inventario TI existente en una aplicación full-st
 
 ## Tareas Pendientes
 ### P1 - Próximas
+- Dashboard de Tickets/Solicitudes de Soporte
+- PWA (Progressive Web App)
+- Integración Active Directory / LDAP
 - Integración PAC para timbrado CFDI (requiere proveedor: Facturama/Finkok)
 
 ### P2 - Futuras

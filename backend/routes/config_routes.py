@@ -111,10 +111,22 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
 async def get_advanced_dashboard_stats(current_user: dict = Depends(get_current_user)):
     now = datetime.now(timezone.utc)
 
+    # Build company filter for multi-tenant
+    company_filter = {}
+    eq_id_filter = {}
+    if current_user.get("company_id"):
+        company_filter["company_id"] = current_user["company_id"]
+        eq_list = await db.equipment.find({"company_id": current_user["company_id"]}, {"id": 1}).to_list(1000)
+        eq_ids = [e["id"] for e in eq_list]
+        eq_id_filter = {"equipment_id": {"$in": eq_ids}}
+
     # --- Maintenance by month (last 6 months) ---
     six_months_ago = now - timedelta(days=180)
+    maint_match = {"created_at": {"$gte": six_months_ago.isoformat()}}
+    if eq_id_filter:
+        maint_match.update(eq_id_filter)
     maintenance_pipeline = [
-        {"$match": {"created_at": {"$gte": six_months_ago.isoformat()}}},
+        {"$match": maint_match},
         {"$addFields": {"month": {"$substr": ["$created_at", 0, 7]}}},
         {"$group": {
             "_id": {"month": "$month", "maintenance_type": "$maintenance_type"},
@@ -135,16 +147,20 @@ async def get_advanced_dashboard_stats(current_user: dict = Depends(get_current_
         maint_by_month.append(entry)
 
     # --- Maintenance status distribution ---
+    maint_status_match = eq_id_filter if eq_id_filter else {}
     status_pipeline = [
+        {"$match": maint_status_match} if maint_status_match else {"$match": {}},
         {"$group": {"_id": "$status", "count": {"$sum": 1}}}
     ]
     maint_status_raw = await db.maintenance_logs.aggregate(status_pipeline).to_list(10)
     maintenance_by_status = [{"status": r["_id"] or "Sin estado", "count": r["count"]} for r in maint_status_raw]
 
     # --- Average resolution time (completed maintenances) ---
+    completed_query = {"status": "Finalizado", "completed_at": {"$exists": True}, "created_at": {"$exists": True}}
+    if eq_id_filter:
+        completed_query.update(eq_id_filter)
     completed_logs = await db.maintenance_logs.find(
-        {"status": "Finalizado", "completed_at": {"$exists": True}, "created_at": {"$exists": True}},
-        {"_id": 0, "created_at": 1, "completed_at": 1}
+        completed_query, {"_id": 0, "created_at": 1, "completed_at": 1}
     ).to_list(500)
 
     resolution_times = []
@@ -161,7 +177,9 @@ async def get_advanced_dashboard_stats(current_user: dict = Depends(get_current_
     avg_resolution_hours = round(sum(resolution_times) / len(resolution_times), 1) if resolution_times else 0
 
     # --- Top equipment with most maintenance (top 5) ---
+    top_eq_match = eq_id_filter if eq_id_filter else {}
     top_eq_pipeline = [
+        {"$match": top_eq_match} if top_eq_match else {"$match": {}},
         {"$group": {"_id": "$equipment_id", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
         {"$limit": 5}
@@ -180,7 +198,9 @@ async def get_advanced_dashboard_stats(current_user: dict = Depends(get_current_
             })
 
     # --- Equipment by status (for pie chart) ---
+    eq_status_match = company_filter if company_filter else {}
     eq_status_pipeline = [
+        {"$match": eq_status_match} if eq_status_match else {"$match": {}},
         {"$group": {"_id": "$status", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}}
     ]
@@ -189,7 +209,10 @@ async def get_advanced_dashboard_stats(current_user: dict = Depends(get_current_
 
     # --- Services expiring soon (next 30 days) ---
     expiring_services = 0
-    services = await db.external_services.find({"is_active": {"$ne": False}, "renewal_date": {"$exists": True}}, {"_id": 0, "renewal_date": 1}).to_list(500)
+    svc_query = {"is_active": {"$ne": False}, "renewal_date": {"$exists": True}}
+    if company_filter:
+        svc_query.update(company_filter)
+    services = await db.external_services.find(svc_query, {"_id": 0, "renewal_date": 1}).to_list(500)
     for svc in services:
         try:
             renewal = datetime.fromisoformat(svc["renewal_date"].replace("Z", "+00:00"))
@@ -199,8 +222,11 @@ async def get_advanced_dashboard_stats(current_user: dict = Depends(get_current_
             pass
 
     # --- Monthly equipment additions (last 6 months) ---
+    eq_month_match = {"created_at": {"$gte": six_months_ago.isoformat()}}
+    if company_filter:
+        eq_month_match.update(company_filter)
     eq_by_month_pipeline = [
-        {"$match": {"created_at": {"$gte": six_months_ago.isoformat()}}},
+        {"$match": eq_month_match},
         {"$addFields": {"month": {"$substr": ["$created_at", 0, 7]}}},
         {"$group": {"_id": "$month", "count": {"$sum": 1}}},
         {"$sort": {"_id": 1}}
