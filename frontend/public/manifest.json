@@ -1,0 +1,26 @@
+{
+  "short_name": "InventarioTI",
+  "name": "Sistema de Inventario TI",
+  "description": "Gestiona el inventario de equipos, mantenimientos y servicios de TI",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1e40af",
+  "background_color": "#ffffff",
+  "orientation": "any",
+  "categories": ["business", "productivity"],
+  "lang": "es"
+}

@@ -8,6 +8,7 @@ from .finance_routes import router as finance_router
 from .config_routes import router as config_router
 from .report_routes import router as report_router
 from .notification_routes import router as notification_router
+from .ticket_routes import router as ticket_router
 
 api_router = APIRouter(prefix="/api")
 
@@ -20,3 +21,4 @@ api_router.include_router(finance_router)
 api_router.include_router(config_router)
 api_router.include_router(report_router)
 api_router.include_router(notification_router)
+api_router.include_router(ticket_router)

@@ -524,3 +524,57 @@ class NotificationSendRequest(BaseModel):
 
 class EmailTestRequest(BaseModel):
     recipient_email: EmailStr
+
+
+
+# ==================== TICKET MODELS ====================
+
+class TicketCreate(BaseModel):
+    title: str
+    description: str
+    priority: str = "Media"
+    category: str = "General"
+    equipment_id: Optional[str] = None
+    assigned_to: Optional[str] = None
+
+class TicketUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[str] = None
+    category: Optional[str] = None
+    status: Optional[str] = None
+    equipment_id: Optional[str] = None
+    assigned_to: Optional[str] = None
+    resolution_notes: Optional[str] = None
+
+class TicketCommentCreate(BaseModel):
+    content: str
+
+class TicketResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    ticket_number: str
+    title: str
+    description: str
+    priority: str
+    category: str
+    status: str
+    equipment_id: Optional[str] = None
+    equipment_code: Optional[str] = None
+    assigned_to: Optional[str] = None
+    assigned_to_name: Optional[str] = None
+    created_by: Optional[str] = None
+    created_by_name: Optional[str] = None
+    resolution_notes: Optional[str] = None
+    created_at: str
+    updated_at: Optional[str] = None
+    closed_at: Optional[str] = None
+
+class TicketCommentResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    ticket_id: str
+    content: str
+    author_id: Optional[str] = None
+    author_name: Optional[str] = None
+    created_at: str

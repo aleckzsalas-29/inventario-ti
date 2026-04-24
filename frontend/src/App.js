@@ -23,6 +23,7 @@ import CustomFieldsPage from "./pages/CustomFieldsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import TicketsPage from "./pages/TicketsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -93,6 +94,7 @@ function AppRoutes() {
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="tickets" element={<TicketsPage />} />
       </Route>
       
       {/* Catch all */}

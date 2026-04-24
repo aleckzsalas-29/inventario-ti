@@ -19,7 +19,7 @@ import {
   LayoutDashboard, Monitor, Building2, Users, UserCheck, Wrench, 
   Server, FileText, Receipt, LogOut, Menu, X,
   Sun, Moon, Bell, ChevronDown, Search, SlidersHorizontal, FileDown, Settings,
-  AlertCircle, CheckCircle, Info, Clock, Mail
+  AlertCircle, CheckCircle, Info, Clock, Mail, Ticket
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
@@ -31,6 +31,7 @@ const navItems = [
   { icon: Users, label: 'Empleados', path: '/employees' },
   { icon: UserCheck, label: 'Asignaciones', path: '/assignments' },
   { icon: Wrench, label: 'Mantenimientos', path: '/maintenance' },
+  { icon: Ticket, label: 'Tickets Soporte', path: '/tickets' },
   { icon: Server, label: 'Servicios Externos', path: '/services' },
   { icon: FileText, label: 'Cotizaciones', path: '/quotations' },
   { icon: Receipt, label: 'Facturas', path: '/invoices' },
