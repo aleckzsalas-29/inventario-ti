@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { usersAPI, rolesAPI, companiesAPI } from '../lib/api';
+import { usersAPI, rolesAPI, companiesAPI, equipmentAPI } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -10,7 +10,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { 
-  Plus, Users, Shield, Edit, Trash2, MoreVertical, Loader2, Search
+  Plus, Users, Shield, Edit, Trash2, MoreVertical, Loader2, Search, Monitor
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,12 +19,13 @@ export default function UsersPage() {
   const [roles, setRoles] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [permissions, setPermissions] = useState([]);
+  const [allEquipment, setAllEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // User Dialog
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [userForm, setUserForm] = useState({ email: '', password: '', name: '', role_id: '', company_id: '' });
+  const [userForm, setUserForm] = useState({ email: '', password: '', name: '', role_id: '', company_id: '', assigned_equipment_ids: [] });
   const [savingUser, setSavingUser] = useState(false);
   
   // Role Dialog
@@ -41,16 +42,18 @@ export default function UsersPage() {
 
   const fetchData = async () => {
     try {
-      const [usersRes, rolesRes, companiesRes, permsRes] = await Promise.all([
+      const [usersRes, rolesRes, companiesRes, permsRes, eqRes] = await Promise.all([
         usersAPI.getAll(),
         rolesAPI.getAll(),
         companiesAPI.getAll(),
-        rolesAPI.getPermissions()
+        rolesAPI.getPermissions(),
+        equipmentAPI.getAll()
       ]);
       setUsers(usersRes.data);
       setRoles(rolesRes.data);
       setCompanies(companiesRes.data);
       setPermissions(permsRes.data.permissions);
+      setAllEquipment(eqRes.data);
     } catch (error) {
       toast.error('Error al cargar datos');
     } finally {
@@ -92,7 +95,8 @@ export default function UsersPage() {
       password: '',
       name: user.name,
       role_id: user.role_id || '',
-      company_id: user.company_id || ''
+      company_id: user.company_id || '',
+      assigned_equipment_ids: user.assigned_equipment_ids || []
     });
     setUserDialogOpen(true);
   };
@@ -110,7 +114,7 @@ export default function UsersPage() {
 
   const resetUserForm = () => {
     setEditingUser(null);
-    setUserForm({ email: '', password: '', name: '', role_id: '', company_id: '' });
+    setUserForm({ email: '', password: '', name: '', role_id: '', company_id: '', assigned_equipment_ids: [] });
   };
 
   // Role handlers
@@ -280,6 +284,49 @@ export default function UsersPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {/* Equipment assignment for Solicitante */}
+                  {roles.find(r => r.id === userForm.role_id)?.name === 'Solicitante' && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Monitor className="w-4 h-4" />
+                        Equipos Asignados
+                      </Label>
+                      <p className="text-xs text-muted-foreground">Selecciona los equipos que el solicitante puede reportar en tickets</p>
+                      <div className="max-h-[200px] overflow-y-auto border rounded-lg p-3 space-y-2 bg-muted/30">
+                        {allEquipment
+                          .filter(eq => !userForm.company_id || eq.company_id === userForm.company_id)
+                          .map(eq => (
+                            <div key={eq.id} className="flex items-center gap-3">
+                              <Checkbox
+                                id={`eq-${eq.id}`}
+                                checked={(userForm.assigned_equipment_ids || []).includes(eq.id)}
+                                onCheckedChange={(checked) => {
+                                  setUserForm(prev => ({
+                                    ...prev,
+                                    assigned_equipment_ids: checked
+                                      ? [...(prev.assigned_equipment_ids || []), eq.id]
+                                      : (prev.assigned_equipment_ids || []).filter(id => id !== eq.id)
+                                  }));
+                                }}
+                                data-testid={`eq-checkbox-${eq.id}`}
+                              />
+                              <label htmlFor={`eq-${eq.id}`} className="text-sm cursor-pointer flex-1">
+                                <span className="font-medium">{eq.inventory_code}</span>
+                                <span className="text-muted-foreground ml-2">{eq.equipment_type} - {eq.brand} {eq.model}</span>
+                              </label>
+                            </div>
+                          ))}
+                        {allEquipment.filter(eq => !userForm.company_id || eq.company_id === userForm.company_id).length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-2">
+                            {userForm.company_id ? 'No hay equipos en esta empresa' : 'Selecciona una empresa primero'}
+                          </p>
+                        )}
+                      </div>
+                      {(userForm.assigned_equipment_ids || []).length > 0 && (
+                        <p className="text-xs text-muted-foreground">{userForm.assigned_equipment_ids.length} equipo(s) seleccionado(s)</p>
+                      )}
+                    </div>
+                  )}
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setUserDialogOpen(false)}>
                       Cancelar
