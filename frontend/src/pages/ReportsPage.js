@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from '../components/ui/input';
 import { 
   Download, FileText, Wrench, Server, Monitor, Calendar,
-  Building2, Loader2, FileDown
+  Building2, Loader2, FileDown, Ticket
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,6 +21,8 @@ export default function ReportsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [period, setPeriod] = useState('month');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState('');
 
   useEffect(() => {
     loadCompanies();
@@ -98,6 +100,13 @@ export default function ReportsPage() {
         case 'external-services':
           response = await reportsAPI.externalServicesPdf(companyId);
           break;
+        case 'tickets':
+          response = await reportsAPI.ticketsPdf({
+            status: selectedStatus || undefined,
+            priority: selectedPriority || undefined,
+            period: period || undefined
+          });
+          break;
         default:
           throw new Error('Tipo de reporte no válido');
       }
@@ -147,6 +156,13 @@ export default function ReportsPage() {
       description: 'Listado de servicios contratados con fechas de renovación y costos',
       icon: Server,
       color: 'bg-purple-500'
+    },
+    {
+      id: 'tickets',
+      title: 'Tickets de Soporte',
+      description: 'Reporte de tickets con estado, prioridad, solicitante y técnico asignado',
+      icon: Ticket,
+      color: 'bg-rose-500'
     }
   ];
 
@@ -232,6 +248,40 @@ export default function ReportsPage() {
                 }}
                 data-testid="date-to"
               />
+            </div>
+          </div>
+
+          {/* Ticket-specific filters */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
+            <div className="space-y-2">
+              <Label>Estado (Tickets)</Label>
+              <Select value={selectedStatus || "all"} onValueChange={(v) => setSelectedStatus(v === "all" ? "" : v)}>
+                <SelectTrigger data-testid="ticket-status-filter">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="Abierto">Abierto</SelectItem>
+                  <SelectItem value="En Proceso">En Proceso</SelectItem>
+                  <SelectItem value="Resuelto">Resuelto</SelectItem>
+                  <SelectItem value="Cerrado">Cerrado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Prioridad (Tickets)</Label>
+              <Select value={selectedPriority || "all"} onValueChange={(v) => setSelectedPriority(v === "all" ? "" : v)}>
+                <SelectTrigger data-testid="ticket-priority-filter">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="Baja">Baja</SelectItem>
+                  <SelectItem value="Media">Media</SelectItem>
+                  <SelectItem value="Alta">Alta</SelectItem>
+                  <SelectItem value="Critica">Critica</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>

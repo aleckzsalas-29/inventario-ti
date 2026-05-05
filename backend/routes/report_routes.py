@@ -1106,3 +1106,207 @@ async def generate_invoice_pdf(invoice_id: str, current_user: dict = Depends(get
     pdf_bytes = pdf.output()
     return Response(content=bytes(pdf_bytes), media_type="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename={inv.get('invoice_number', 'factura')}.pdf"})
+
+
+# ==================== TICKETS PDF ====================
+
+@router.get("/reports/tickets/pdf")
+async def generate_tickets_pdf(
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    category: Optional[str] = None,
+    period: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    query = {}
+    if status:
+        query["status"] = status
+    if priority:
+        query["priority"] = priority
+    if category:
+        query["category"] = category
+    if period:
+        now = datetime.now(timezone.utc)
+        if period == "day":
+            since = (now - timedelta(days=1)).isoformat()
+        elif period == "week":
+            since = (now - timedelta(days=7)).isoformat()
+        elif period == "month":
+            since = (now - timedelta(days=30)).isoformat()
+        else:
+            since = None
+        if since:
+            query["created_at"] = {"$gte": since}
+
+    tickets = await db.tickets.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+    if not tickets:
+        raise HTTPException(status_code=404, detail="No hay tickets para generar reporte")
+
+    # Enrich tickets
+    for t in tickets:
+        if t.get("equipment_id"):
+            eq = await db.equipment.find_one({"id": t["equipment_id"]}, {"_id": 0, "inventory_code": 1})
+            t["equipment_code"] = eq.get("inventory_code", "N/A") if eq else "N/A"
+        if t.get("assigned_to"):
+            user = await db.users.find_one({"id": t["assigned_to"]}, {"_id": 0, "name": 1})
+            t["assigned_to_name"] = user.get("name", "N/A") if user else "N/A"
+        if t.get("created_by"):
+            user = await db.users.find_one({"id": t["created_by"]}, {"_id": 0, "name": 1})
+            t["created_by_name"] = user.get("name", "N/A") if user else "N/A"
+
+    # Stats
+    total = len(tickets)
+    open_count = len([t for t in tickets if t.get("status") == "Abierto"])
+    in_progress = len([t for t in tickets if t.get("status") == "En Proceso"])
+    resolved = len([t for t in tickets if t.get("status") == "Resuelto"])
+    closed = len([t for t in tickets if t.get("status") == "Cerrado"])
+
+    # Generate PDF
+    pdf = ModernPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+
+    # Title page info
+    pdf.add_page()
+    pdf.section_title("REPORTE DE TICKETS DE SOPORTE")
+    pdf.ln(3)
+
+    # Filters applied
+    pdf.set_font("Helvetica", "", 8)
+    filters_text = "Filtros: "
+    if status:
+        filters_text += f"Estado={status} "
+    if priority:
+        filters_text += f"Prioridad={priority} "
+    if category:
+        filters_text += f"Categoria={category} "
+    if period:
+        filters_text += f"Periodo={period} "
+    if filters_text == "Filtros: ":
+        filters_text += "Ninguno (todos los tickets)"
+    pdf.cell(0, 5, sanitize_text(filters_text), 0, 1)
+    pdf.cell(0, 5, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", 0, 1)
+    pdf.ln(5)
+
+    # Summary stats
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.set_fill_color(240, 240, 240)
+    pdf.cell(0, 7, f"  Resumen: {total} tickets", 0, 1, fill=True)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.cell(47, 6, f"  Abiertos: {open_count}", 0)
+    pdf.cell(47, 6, f"En Proceso: {in_progress}", 0)
+    pdf.cell(47, 6, f"Resueltos: {resolved}", 0)
+    pdf.cell(47, 6, f"Cerrados: {closed}", 0, 1)
+    pdf.ln(5)
+
+    # Table header
+    pdf.set_font("Helvetica", "B", 8)
+    pdf.set_fill_color(41, 128, 185)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(18, 6, "No.", 1, fill=True, align="C")
+    pdf.cell(50, 6, "Titulo", 1, fill=True)
+    pdf.cell(22, 6, "Estado", 1, fill=True, align="C")
+    pdf.cell(20, 6, "Prioridad", 1, fill=True, align="C")
+    pdf.cell(22, 6, "Categoria", 1, fill=True, align="C")
+    pdf.cell(30, 6, "Solicitante", 1, fill=True)
+    pdf.cell(28, 6, "Tecnico", 1, fill=True)
+    pdf.ln()
+    pdf.set_text_color(0, 0, 0)
+
+    # Table rows
+    pdf.set_font("Helvetica", "", 7)
+    for i, t in enumerate(tickets):
+        if pdf.get_y() > 260:
+            pdf.add_page()
+            # Repeat header
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.set_fill_color(41, 128, 185)
+            pdf.set_text_color(255, 255, 255)
+            pdf.cell(18, 6, "No.", 1, fill=True, align="C")
+            pdf.cell(50, 6, "Titulo", 1, fill=True)
+            pdf.cell(22, 6, "Estado", 1, fill=True, align="C")
+            pdf.cell(20, 6, "Prioridad", 1, fill=True, align="C")
+            pdf.cell(22, 6, "Categoria", 1, fill=True, align="C")
+            pdf.cell(30, 6, "Solicitante", 1, fill=True)
+            pdf.cell(28, 6, "Tecnico", 1, fill=True)
+            pdf.ln()
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font("Helvetica", "", 7)
+
+        bg = (248, 248, 248) if i % 2 == 0 else (255, 255, 255)
+        pdf.set_fill_color(*bg)
+        pdf.cell(18, 5, sanitize_text(t.get("ticket_number", ""))[:8], 1, fill=True, align="C")
+        pdf.cell(50, 5, sanitize_text(t.get("title", ""))[:28], 1, fill=True)
+        pdf.cell(22, 5, sanitize_text(t.get("status", ""))[:12], 1, fill=True, align="C")
+        pdf.cell(20, 5, sanitize_text(t.get("priority", ""))[:10], 1, fill=True, align="C")
+        pdf.cell(22, 5, sanitize_text(t.get("category", ""))[:12], 1, fill=True, align="C")
+        pdf.cell(30, 5, sanitize_text(t.get("created_by_name", "-"))[:16], 1, fill=True)
+        pdf.cell(28, 5, sanitize_text(t.get("assigned_to_name", "-"))[:16], 1, fill=True)
+        pdf.ln()
+
+    # Detailed section
+    pdf.add_page()
+    pdf.section_title("DETALLE DE TICKETS")
+    pdf.ln(3)
+
+    for t in tickets:
+        if pdf.get_y() > 240:
+            pdf.add_page()
+
+        # Ticket header
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(0, 6, sanitize_text(f"  {t.get('ticket_number', '')} - {t.get('title', '')}"), "LTR", 1, fill=True)
+
+        pdf.set_font("Helvetica", "", 8)
+        # Row 1
+        pdf.cell(25, 5, "  Estado:", "L")
+        pdf.cell(35, 5, sanitize_text(t.get("status", "")), 0)
+        pdf.cell(25, 5, "Prioridad:", 0)
+        pdf.cell(30, 5, sanitize_text(t.get("priority", "")), 0)
+        pdf.cell(25, 5, "Categoria:", 0)
+        pdf.cell(0, 5, sanitize_text(t.get("category", "")), "R", 1)
+        # Row 2
+        pdf.cell(25, 5, "  Creado:", "L")
+        pdf.cell(35, 5, sanitize_text(t.get("created_by_name", "-")), 0)
+        pdf.cell(25, 5, "Tecnico:", 0)
+        pdf.cell(30, 5, sanitize_text(t.get("assigned_to_name", "-")), 0)
+        pdf.cell(25, 5, "Equipo:", 0)
+        pdf.cell(0, 5, sanitize_text(t.get("equipment_code", "-")), "R", 1)
+        # Row 3
+        pdf.cell(25, 5, "  Fecha:", "LB")
+        created = t.get("created_at", "")[:10]
+        pdf.cell(35, 5, created, "B")
+        closed_at = t.get("closed_at", "")
+        if closed_at:
+            pdf.cell(25, 5, "Cerrado:", "B")
+            pdf.cell(0, 5, closed_at[:10], "BR", 1)
+        else:
+            pdf.cell(0, 5, "", "BR", 1)
+
+        # Description
+        if t.get("description"):
+            pdf.set_font("Helvetica", "I", 7)
+            pdf.cell(5, 4, "", 0)
+            desc = sanitize_text(t.get("description", ""))[:200]
+            pdf.multi_cell(180, 4, desc)
+
+        # Resolution notes
+        if t.get("resolution_notes"):
+            pdf.set_font("Helvetica", "B", 7)
+            pdf.cell(5, 4, "", 0)
+            pdf.cell(25, 4, "Resolucion:", 0)
+            pdf.set_font("Helvetica", "", 7)
+            pdf.multi_cell(160, 4, sanitize_text(t.get("resolution_notes", ""))[:200])
+
+        pdf.ln(3)
+
+    pdf_bytes = pdf.output()
+    filename = "tickets_reporte"
+    if status:
+        filename += f"_{status}"
+    if period:
+        filename += f"_{period}"
+
+    return Response(content=bytes(pdf_bytes), media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename={filename}.pdf"})

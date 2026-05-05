@@ -45,6 +45,23 @@ async def _send_ticket_email(ticket: dict, event_type: str, extra_info: str = ""
             if tech and tech.get("email"):
                 recipients.add(tech["email"])
 
+        # Get custom recipients from notification settings (per-company or global)
+        eq = None
+        if ticket.get("equipment_id"):
+            eq = await db.equipment.find_one({"id": ticket["equipment_id"]}, {"_id": 0, "company_id": 1})
+        company_id = eq.get("company_id") if eq else None
+
+        if company_id:
+            notif_settings = await db.notification_settings.find_one(
+                {"type": "company_notifications", "company_id": company_id}, {"_id": 0}
+            )
+        else:
+            notif_settings = await db.notification_settings.find_one({"type": "notifications"}, {"_id": 0})
+
+        if notif_settings and notif_settings.get("custom_recipients"):
+            for email in notif_settings["custom_recipients"]:
+                recipients.add(email)
+
         if not recipients:
             return
 

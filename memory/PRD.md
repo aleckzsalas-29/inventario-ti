@@ -71,6 +71,8 @@ Modernizar un proyecto PHP de inventario TI existente en una aplicación full-st
 - **UI asignacion de equipos a Solicitantes** (05/05/2026): Al crear/editar usuario con rol Solicitante, aparece lista de equipos con checkboxes filtrada por empresa. Se guardan en assigned_equipment_ids.
 - **Notificaciones email para Tickets** (05/05/2026): Se envia email automatico al crear ticket (al tecnico asignado), al cambiar estado (al solicitante), y al agregar comentario (a ambos).
 - **Eliminar usuarios permanentemente** (05/05/2026): Endpoint DELETE /users/{id}/permanent y boton "Eliminar Permanente" en UI (con confirmacion). No permite auto-eliminarse.
+- **Notificaciones tickets a destinatarios personalizados** (05/05/2026): Las notificaciones email de tickets ahora incluyen a los custom_recipients configurados por empresa en la seccion de Notificaciones Email.
+- **Reporte PDF de Tickets** (05/05/2026): Nuevo endpoint GET /reports/tickets/pdf con filtros (status, priority, category, period). PDF incluye tabla resumen + detalle completo de cada ticket. Agregado a la pagina de Reportes con filtros de estado y prioridad.
 
 ## Integraciones 3rd Party
 - **Resend**: Envío de emails (API Key: sandbox)
