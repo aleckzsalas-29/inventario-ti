@@ -1,9 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
+import asyncio
+import logging
 from database import db
 from auth import get_current_user
 from models import TicketCreate, TicketUpdate, TicketResponse, TicketCommentCreate, TicketCommentResponse
 from helpers import generate_id, now_iso
+from services.email_service import send_email
 
 router = APIRouter()
 
@@ -18,6 +21,79 @@ async def _is_solicitante(user: dict) -> bool:
         if role and role.get("name") == "Solicitante":
             return True
     return False
+
+
+async def _send_ticket_email(ticket: dict, event_type: str, extra_info: str = ""):
+    """Send email notification for ticket events"""
+    try:
+        ticket_number = ticket.get("ticket_number", "N/A")
+        title = ticket.get("title", "")
+        status = ticket.get("status", "")
+        priority = ticket.get("priority", "")
+
+        recipients = set()
+
+        # Get creator email
+        if ticket.get("created_by"):
+            creator = await db.users.find_one({"id": ticket["created_by"]}, {"_id": 0, "email": 1, "name": 1})
+            if creator and creator.get("email"):
+                recipients.add(creator["email"])
+
+        # Get assigned tech email
+        if ticket.get("assigned_to"):
+            tech = await db.users.find_one({"id": ticket["assigned_to"]}, {"_id": 0, "email": 1, "name": 1})
+            if tech and tech.get("email"):
+                recipients.add(tech["email"])
+
+        if not recipients:
+            return
+
+        priority_colors = {"Baja": "#64748b", "Media": "#3b82f6", "Alta": "#f59e0b", "Critica": "#ef4444"}
+        p_color = priority_colors.get(priority, "#3b82f6")
+
+        if event_type == "created":
+            subject = f"Nuevo Ticket {ticket_number}: {title}"
+            body_text = f"Se ha creado un nuevo ticket de soporte."
+        elif event_type == "status_changed":
+            subject = f"Ticket {ticket_number} - Estado: {status}"
+            body_text = f"El estado del ticket ha cambiado a <strong>{status}</strong>."
+        elif event_type == "comment":
+            subject = f"Nuevo comentario en Ticket {ticket_number}"
+            body_text = f"Se agregó un comentario al ticket."
+        else:
+            subject = f"Actualización Ticket {ticket_number}"
+            body_text = "El ticket ha sido actualizado."
+
+        html = f"""<!DOCTYPE html><html><head><style>
+            body {{ font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }}
+            .container {{ max-width: 550px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+            .header {{ background: #1e40af; padding: 16px 24px; color: white; }}
+            .content {{ padding: 24px; }}
+            .badge {{ display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }}
+            .footer {{ background: #f8f9fa; padding: 12px 24px; font-size: 12px; color: #666; text-align: center; }}
+            .detail {{ margin: 12px 0; padding: 12px; background: #f8f9fa; border-radius: 6px; }}
+        </style></head><body>
+        <div class="container">
+            <div class="header"><h3 style="margin:0;">InventarioTI - Tickets</h3></div>
+            <div class="content">
+                <p>{body_text}</p>
+                <div class="detail">
+                    <p style="margin:0 0 8px;"><strong>{ticket_number}</strong> - {title}</p>
+                    <p style="margin:0;">
+                        <span class="badge" style="background:{p_color}20;color:{p_color};">{priority}</span>
+                        <span class="badge" style="background:#e2e8f0;color:#475569;margin-left:6px;">{status}</span>
+                    </p>
+                </div>
+                {f'<p style="margin-top:12px;padding:10px;background:#f0fdf4;border-radius:6px;font-size:13px;">{extra_info}</p>' if extra_info else ''}
+            </div>
+            <div class="footer">Notificación automática de InventarioTI</div>
+        </div></body></html>"""
+
+        for email_addr in recipients:
+            await send_email(email_addr, subject, html)
+            await asyncio.sleep(0.1)
+    except Exception as e:
+        logging.error(f"Error sending ticket email: {str(e)}")
 
 
 async def _enrich_ticket(ticket: dict) -> dict:
@@ -164,6 +240,10 @@ async def create_ticket(data: TicketCreate, current_user: dict = Depends(get_cur
     await db.tickets.insert_one(ticket)
     ticket = await _enrich_ticket(ticket)
     del ticket["_id"]
+
+    # Send email notification for new ticket
+    await _send_ticket_email(ticket, "created")
+
     return TicketResponse(**ticket)
 
 
@@ -185,6 +265,11 @@ async def update_ticket(ticket_id: str, data: TicketUpdate, current_user: dict =
     await db.tickets.update_one({"id": ticket_id}, {"$set": update_data})
     updated = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
     updated = await _enrich_ticket(updated)
+
+    # Send email notification if status changed
+    if "status" in data.model_dump(exclude_unset=True):
+        await _send_ticket_email(updated, "status_changed")
+
     return TicketResponse(**updated)
 
 
@@ -235,10 +320,14 @@ async def create_ticket_comment(ticket_id: str, data: TicketCommentCreate, curre
     }
     await db.ticket_comments.insert_one(comment)
     del comment["_id"]
+
+    # Send email notification for new comment
+    ticket_for_email = await db.tickets.find_one({"id": ticket_id}, {"_id": 0})
+    if ticket_for_email:
+        author_name = current_user.get("name", "Usuario")
+        await _send_ticket_email(
+            ticket_for_email, "comment",
+            extra_info=f"<strong>{author_name}:</strong> {data.content[:200]}"
+        )
+
     return TicketCommentResponse(**comment)
-
-
-# (moved to before {ticket_id} routes)
-
-
-# (moved to before {ticket_id} routes)

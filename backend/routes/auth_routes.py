@@ -168,6 +168,17 @@ async def delete_user(user_id: str, current_user: dict = Depends(get_current_use
     return {"message": "Usuario desactivado"}
 
 
+@router.delete("/users/{user_id}/permanent")
+async def delete_user_permanently(user_id: str, current_user: dict = Depends(get_current_user)):
+    await check_permission(current_user, "admin")
+    if user_id == current_user.get("id"):
+        raise HTTPException(status_code=400, detail="No puede eliminarse a sí mismo")
+    result = await db.users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return {"message": "Usuario eliminado permanentemente"}
+
+
 # ==================== ROLES ====================
 
 @router.get("/roles", response_model=List[RoleResponse])

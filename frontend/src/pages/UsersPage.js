@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { usersAPI, rolesAPI, companiesAPI, equipmentAPI } from '../lib/api';
+import api, { usersAPI, rolesAPI, companiesAPI, equipmentAPI } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -109,6 +109,17 @@ export default function UsersPage() {
       fetchData();
     } catch (error) {
       toast.error('Error al desactivar usuario');
+    }
+  };
+
+  const handlePermanentDelete = async (id) => {
+    if (!window.confirm('¿ELIMINAR PERMANENTEMENTE este usuario? Esta acción no se puede deshacer.')) return;
+    try {
+      await api.delete(`/users/${id}/permanent`);
+      toast.success('Usuario eliminado permanentemente');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al eliminar usuario');
     }
   };
 
@@ -385,9 +396,13 @@ export default function UsersPage() {
                                   <Edit className="w-4 h-4 mr-2" />
                                   Editar
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDeleteUser(user.id)} className="text-destructive">
+                                <DropdownMenuItem onClick={() => handleDeleteUser(user.id)} className="text-amber-600">
                                   <Trash2 className="w-4 h-4 mr-2" />
                                   Desactivar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handlePermanentDelete(user.id)} className="text-destructive" data-testid={`delete-permanent-${user.id}`}>
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Eliminar Permanente
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
