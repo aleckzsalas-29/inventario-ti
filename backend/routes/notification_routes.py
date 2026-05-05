@@ -166,6 +166,7 @@ async def check_notifications(current_user: dict = Depends(get_current_user)):
         "pending_maintenance": pending_maintenance,
         "expiring_services": sorted(expiring_services, key=lambda x: x.get("days_until", 999)),
         "completed_maintenance": await db.maintenance_logs.count_documents({"status": "Finalizado"}),
+        "open_tickets": await db.tickets.count_documents({"status": {"$in": ["Abierto", "En Proceso"]}}),
         "total_alerts": len(pending_maintenance) + len(expiring_services)
     }
 
@@ -223,6 +224,7 @@ async def send_notification_email(
             "service_renewal_enabled": data.notification_type == "service_renewal",
             "maintenance_pending_enabled": data.notification_type == "maintenance_pending",
             "maintenance_completed_enabled": data.notification_type == "maintenance_completed",
+            "tickets_open_enabled": data.notification_type == "tickets_open",
         })
         await db.notification_history.insert_one({
             "sent_at": now_iso(), "type": "manual", "company_id": company_id,
@@ -273,6 +275,11 @@ async def send_notification_email(
         template_data["maintenances"] = completed
         if not completed:
             return {"message": "No hay mantenimientos realizados", "sent": 0}
+    elif data.notification_type == "tickets_open":
+        tickets = await db.tickets.find({"status": {"$in": ["Abierto", "En Proceso"]}}, {"_id": 0}).to_list(100)
+        template_data["tickets"] = tickets
+        if not tickets:
+            return {"message": "No hay tickets abiertos", "sent": 0}
     else:
         raise HTTPException(status_code=400, detail=f"Tipo no valido: {data.notification_type}")
 

@@ -5,7 +5,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Bell, Send, Clock, Settings, History, Play, CheckCircle, AlertTriangle, Mail, Building2 } from "lucide-react";
+import { Bell, Send, Clock, Settings, History, Play, CheckCircle, AlertTriangle, Mail, Building2, Ticket } from "lucide-react";
 import api from "../lib/api";
 
 const SectionHeader = ({ icon: Icon, title, description }) => (
@@ -309,6 +309,15 @@ export default function NotificationsPage() {
                 />
               </div>
 
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Tickets abiertos</span>
+                <Switch
+                  data-testid="tickets-toggle"
+                  checked={settings.tickets_open_enabled !== false}
+                  onCheckedChange={(v) => setSettings(p => ({ ...p, tickets_open_enabled: v }))}
+                />
+              </div>
+
               {settings.service_renewal_enabled && (
                 <div className="flex items-center gap-3 pl-4">
                   <Label className="text-sm text-muted-foreground whitespace-nowrap">Días antes del vencimiento:</Label>
@@ -477,6 +486,22 @@ export default function NotificationsPage() {
                   {alerts?.completed_maintenance > 0 && (
                     <span className="ml-auto bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">
                       {alerts.completed_maintenance}
+                    </span>
+                  )}
+                </Button>
+
+                <Button
+                  onClick={() => sendManualNotification("tickets_open")}
+                  disabled={loading.tickets_open}
+                  variant="outline"
+                  className="w-full justify-start"
+                  data-testid="send-tickets-btn"
+                >
+                  <Ticket className="w-4 h-4 mr-2 text-rose-500" />
+                  {loading.tickets_open ? "Enviando..." : "Tickets Abiertos"}
+                  {alerts?.open_tickets > 0 && (
+                    <span className="ml-auto bg-rose-100 text-rose-700 text-xs px-2 py-0.5 rounded-full">
+                      {alerts.open_tickets}
                     </span>
                   )}
                 </Button>

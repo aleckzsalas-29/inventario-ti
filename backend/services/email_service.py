@@ -105,6 +105,24 @@ def get_email_template(notification_type: str, data: dict) -> tuple:
             <div class="footer">Mensaje automatico de {company_name} - {datetime.now().strftime('%d/%m/%Y %H:%M')}</div>
             </div></body></html>'''
 
+    elif notification_type == 'tickets_open':
+        tickets = data.get('tickets', [])
+        subject = f"{company_name}: Tickets de soporte abiertos"
+        tickets_rows = ''
+        for t in tickets:
+            priority_colors = {"Baja": "#64748b", "Media": "#3b82f6", "Alta": "#f59e0b", "Critica": "#ef4444"}
+            p_color = priority_colors.get(t.get('priority', ''), '#3b82f6')
+            tickets_rows += f'<tr><td>{t.get("ticket_number", "")}</td><td>{t.get("title", "")[:40]}</td><td style="color:{p_color};font-weight:600;">{t.get("priority", "")}</td><td>{t.get("status", "")}</td><td>{t.get("created_at", "")[:10]}</td></tr>'
+        html = f'''<!DOCTYPE html><html><head>{base_style}</head><body>
+            <div class="container"><div class="header">{logo_html}</div>
+            <div class="content"><h2>Tickets de Soporte Abiertos</h2>
+            <p>Hay <strong>{len(tickets)}</strong> ticket(s) pendientes de atender:</p>
+            <table><thead><tr><th>No.</th><th>Titulo</th><th>Prioridad</th><th>Estado</th><th>Fecha</th></tr></thead>
+            <tbody>{tickets_rows}</tbody></table>
+            <p>Por favor, revisa y atiende estos tickets.</p></div>
+            <div class="footer">Mensaje automatico de {company_name} - {datetime.now().strftime('%d/%m/%Y %H:%M')}</div>
+            </div></body></html>'''
+
     else:
         subject = f"{company_name}: Notificacion"
         html = f'''<!DOCTYPE html><html><head>{base_style}</head><body>
@@ -240,6 +258,25 @@ async def send_notifications_for_company(company_id: str, company: dict, notif_s
                 result = await send_email(email_addr, subject, html)
                 if result.get("status") == "success":
                     notifications_sent.append({"type": "maintenance_completed", "recipient": email_addr, "company": company_name, "count": len(completed)})
+                await asyncio.sleep(0.1)
+
+    # Open tickets
+    if notif_settings.get("tickets_open_enabled", True):
+        tickets = await db.tickets.find(
+            {"status": {"$in": ["Abierto", "En Proceso"]}}, {"_id": 0}
+        ).to_list(100)
+        # Filter tickets by equipment belonging to this company
+        if eq_ids:
+            company_tickets = [t for t in tickets if t.get("equipment_id") in eq_ids or not t.get("equipment_id")]
+        else:
+            company_tickets = tickets
+        if company_tickets:
+            data["tickets"] = company_tickets
+            subject, html = get_email_template("tickets_open", data)
+            for email_addr in all_recipients:
+                result = await send_email(email_addr, subject, html)
+                if result.get("status") == "success":
+                    notifications_sent.append({"type": "tickets_open", "recipient": email_addr, "company": company_name, "count": len(company_tickets)})
                 await asyncio.sleep(0.1)
 
     return notifications_sent
