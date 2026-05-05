@@ -29,7 +29,7 @@ async def create_external_service(svc_data: ExternalServiceCreate, current_user:
     await check_permission(current_user, "services.write")
     service = {
         "id": generate_id(), "company_id": svc_data.company_id, "service_type": svc_data.service_type,
-        "provider": svc_data.provider, "description": svc_data.description,
+        "provider": svc_data.provider, "description": svc_data.description, "cost": svc_data.cost,
         "start_date": svc_data.start_date, "renewal_date": svc_data.renewal_date,
         "payment_frequency": svc_data.payment_frequency, "credentials_info": svc_data.credentials_info,
         "custom_fields": svc_data.custom_fields, "is_active": True, "created_at": now_iso()

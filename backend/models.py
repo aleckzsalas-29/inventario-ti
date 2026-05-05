@@ -355,6 +355,7 @@ class ExternalServiceCreate(BaseModel):
     service_type: str
     provider: str
     description: Optional[str] = None
+    cost: Optional[float] = None
     start_date: str
     renewal_date: Optional[str] = None
     payment_frequency: Optional[str] = None
@@ -369,6 +370,7 @@ class ExternalServiceResponse(BaseModel):
     service_type: str
     provider: str
     description: Optional[str] = None
+    cost: Optional[float] = None
     start_date: str
     renewal_date: Optional[str] = None
     payment_frequency: Optional[str] = None
